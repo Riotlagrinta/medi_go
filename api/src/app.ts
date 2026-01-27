@@ -1,5 +1,8 @@
 import express, { type Request, type Response } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import { z } from 'zod';
 import { supabase } from './db/index.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -8,19 +11,67 @@ import { authenticateJWT, type AuthRequest } from './middleware/auth.js';
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret';
 
-app.use(cors());
-app.use(express.json());
+// Security: Set secure HTTP headers
+app.use(helmet());
 
-app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'OK', message: 'MediGo API with Supabase is running' });
+// Security: CORS restriction
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://medi-go.vercel.app'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json({ limit: '10kb' })); // Limit body size to prevent DoS
+
+// Security: Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: { error: 'Trop de requêtes, veuillez réessayer plus tard.' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 15, // limit each IP to 15 login/register attempts per hour
+  message: { error: 'Trop de tentatives, réessayez dans une heure.' }
+});
+
+app.use('/api/', limiter);
+app.use('/api/auth/', authLimiter);
+
+// --- SCHEMAS DE VALIDATION ---
+const registerSchema = z.object({
+  email: z.string().email('Email invalide'),
+  password: z.string().min(8, 'Le mot de passe doit faire au moins 8 caractères'),
+  full_name: z.string().min(2, 'Nom trop court'),
+  role: z.enum(['patient', 'pharmacy_admin', 'super_admin']).optional(),
+  pharmacy_id: z.number().optional()
+});
+
+const loginSchema = z.object({
+  email: z.string().email('Email invalide'),
+  password: z.string().min(1, 'Mot de passe requis')
 });
 
 // --- AUTHENTICATION ROUTES ---
 
 app.post('/api/auth/register', async (req: Request, res: Response) => {
-  const { email, password, full_name, role = 'patient', pharmacy_id } = req.body;
-
   try {
+    const validatedData = registerSchema.parse(req.body);
+    const { email, password, full_name, role = 'patient', pharmacy_id } = validatedData;
+
     const password_hash = await bcrypt.hash(password, 10);
     const { data, error } = await supabase
       .from('users')
@@ -36,15 +87,19 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
     const token = jwt.sign({ id: data.id, email: data.email, role: data.role, pharmacy_id: data.pharmacy_id }, JWT_SECRET, { expiresIn: '24h' });
     res.status(201).json({ token, user: { id: data.id, email: data.email, role: data.role, full_name: data.full_name } });
   } catch (err) {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ error: err.errors[0].message });
+    }
     console.error('Registration error:', err);
     res.status(500).json({ error: 'Erreur lors de l\'inscription' });
   }
 });
 
 app.post('/api/auth/login', async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-
   try {
+    const validatedData = loginSchema.parse(req.body);
+    const { email, password } = validatedData;
+
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -63,6 +118,9 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
     const token = jwt.sign({ id: data.id, email: data.email, role: data.role, pharmacy_id: data.pharmacy_id }, JWT_SECRET, { expiresIn: '24h' });
     res.json({ token, user: { id: data.id, email: data.email, role: data.role, full_name: data.full_name, pharmacy_id: data.pharmacy_id } });
   } catch (err) {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ error: err.errors[0].message });
+    }
     console.error('Login error:', err);
     res.status(500).json({ error: 'Erreur lors de la connexion' });
   }
@@ -96,7 +154,18 @@ app.get('/api/search', async (req: Request, res: Response) => {
 
 // Get pharmacies on duty
 app.get('/api/pharmacies/on-duty', async (req: Request, res: Response) => {
-  // ... existing code ...
+  try {
+    const { data, error } = await supabase
+      .from('pharmacies')
+      .select('*')
+      .eq('is_on_duty', true);
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error('Error fetching pharmacies on duty:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
 });
 
 // Get single pharmacy details
@@ -119,35 +188,44 @@ app.get('/api/pharmacies/:id', async (req: Request, res: Response) => {
 
 // Get nearby pharmacies
 app.get('/api/pharmacies/nearby', async (req: Request, res: Response) => {
-  // ... existing code ...
+  const { lat, lng, radius = 10000 } = req.query;
+  if (!lat || !lng) return res.status(400).json({ error: 'Coordinates required' });
+
+  try {
+    const { data, error } = await supabase.rpc('search_pharmacies', {
+      search_query: '%%',
+      user_lat: parseFloat(lat as string),
+      user_lng: parseFloat(lng as string),
+      radius_meters: parseInt(radius as string)
+    });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error('Error fetching nearby pharmacies:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
 });
 
 // Search pharmacies by name
 app.get('/api/pharmacies/search', async (req: Request, res: Response) => {
-  const { q, lat, lng, radius = 10000 } = req.query;
-
+  const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Query is required' });
 
   try {
     const { data, error } = await supabase
       .from('pharmacies')
-      .select('*, ST_Distance(location, ST_MakePoint($1, $2)::geography) as distance') // Note: simple query for name search
+      .select('*')
       .ilike('name', `%${q}%`);
 
     if (error) throw error;
 
-    // Map to match the search result format
     const formatted = data.map((p: any) => ({
       pharmacy_id: p.id,
       pharmacy_name: p.name,
       address: p.address,
       phone: p.phone,
       is_on_duty: p.is_on_duty,
-      medication_id: 0,
-      medication_name: 'Consulter catalogue',
-      price: '---',
-      quantity: 0,
-      distance: 0 // Simplifié pour la démo
+      distance: 0
     }));
 
     res.json(formatted);
@@ -179,7 +257,7 @@ app.post('/api/reservations', authenticateJWT, async (req: AuthRequest, res: Res
 // Get all reservations
 app.get('/api/reservations', authenticateJWT, async (req: AuthRequest, res: Response) => {
   try {
-    let query = supabase
+    let queryBuilder = supabase
       .from('reservations')
       .select(`
         id, quantity, status, created_at,
@@ -187,18 +265,15 @@ app.get('/api/reservations', authenticateJWT, async (req: AuthRequest, res: Resp
         medications (name, price)
       `);
 
-    // If not super_admin, only show own reservations (for patient) or pharmacy reservations (for pharmacy_admin)
     if (req.user.role === 'patient') {
-      query = query.eq('patient_id', req.user.id);
+      queryBuilder = queryBuilder.eq('patient_id', req.user.id);
     } else if (req.user.role === 'pharmacy_admin') {
-      query = query.eq('pharmacy_id', req.user.pharmacy_id);
+      queryBuilder = queryBuilder.eq('pharmacy_id', req.user.pharmacy_id);
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
-
+    const { data, error } = await queryBuilder.order('created_at', { ascending: false });
     if (error) throw error;
     
-    // Flatten the result to match existing frontend expectations
     const flattened = data.map((r: any) => ({
       id: r.id,
       quantity: r.quantity,
@@ -239,17 +314,17 @@ app.post('/api/appointments', authenticateJWT, async (req: AuthRequest, res: Res
 // Get all appointments
 app.get('/api/appointments', authenticateJWT, async (req: AuthRequest, res: Response) => {
   try {
-    let query = supabase
+    let queryBuilder = supabase
       .from('appointments')
       .select('*, pharmacies(name, address)');
 
     if (req.user.role === 'patient') {
-      query = query.eq('patient_id', req.user.id);
+      queryBuilder = queryBuilder.eq('patient_id', req.user.id);
     } else if (req.user.role === 'pharmacy_admin') {
-      query = query.eq('pharmacy_id', req.user.pharmacy_id);
+      queryBuilder = queryBuilder.eq('pharmacy_id', req.user.pharmacy_id);
     }
 
-    const { data, error } = await query.order('appointment_date', { ascending: true });
+    const { data, error } = await queryBuilder.order('appointment_date', { ascending: true });
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -263,9 +338,8 @@ app.patch('/api/pharmacies/:id', authenticateJWT, async (req: AuthRequest, res: 
   const { id } = req.params;
   const { is_on_duty } = req.body;
 
-  // Authorization check: only super_admin or the specific pharmacy_admin can update
   if (req.user.role !== 'super_admin' && (req.user.role !== 'pharmacy_admin' || req.user.pharmacy_id !== parseInt(id as string))) {
-    return res.status(403).json({ error: 'Accès non autorisé à cette pharmacie' });
+    return res.status(403).json({ error: 'Accès non autorisé' });
   }
 
   try {
@@ -275,14 +349,10 @@ app.patch('/api/pharmacies/:id', authenticateJWT, async (req: AuthRequest, res: 
       .eq('id', id)
       .select();
 
-    if (error) {
-      console.error('Supabase error:', error.message);
-      return res.status(500).json({ error: error.message });
-    }
-    
+    if (error) throw error;
     res.json(data[0]);
   } catch (err) {
-    console.error('Unexpected error:', err);
+    console.error('Error updating pharmacy:', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
@@ -293,10 +363,7 @@ app.get('/api/pharmacies/:id/stocks', async (req: Request, res: Response) => {
   try {
     const { data, error } = await supabase
       .from('stocks')
-      .select(`
-        id, quantity, price,
-        medications (id, name, category)
-      `)
+      .select(`id, quantity, price, medications (id, name, category)`)
       .eq('pharmacy_id', id);
 
     if (error) throw error;
@@ -313,7 +380,7 @@ app.get('/api/pharmacies/:id/stocks', async (req: Request, res: Response) => {
     res.json(flattened);
   } catch (err) {
     console.error('Error fetching stocks:', err);
-    res.status(500).json({ error: 'Erreur lors de la récupération des stocks' });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -323,10 +390,9 @@ app.patch('/api/stocks/:id', authenticateJWT, async (req: AuthRequest, res: Resp
   const { quantity, price } = req.body;
 
   try {
-    // Verify ownership before update
     const { data: stockEntry } = await supabase.from('stocks').select('pharmacy_id').eq('id', id).single();
     if (!stockEntry || (req.user.role !== 'super_admin' && (req.user.role !== 'pharmacy_admin' || req.user.pharmacy_id !== stockEntry.pharmacy_id))) {
-      return res.status(403).json({ error: 'Accès non autorisé à ce stock' });
+      return res.status(403).json({ error: 'Accès non autorisé' });
     }
 
     const { data, error } = await supabase
@@ -347,10 +413,9 @@ app.patch('/api/stocks/:id', authenticateJWT, async (req: AuthRequest, res: Resp
 app.delete('/api/stocks/:id', authenticateJWT, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   try {
-    // Verify ownership before delete
     const { data: stockEntry } = await supabase.from('stocks').select('pharmacy_id').eq('id', id).single();
     if (!stockEntry || (req.user.role !== 'super_admin' && (req.user.role !== 'pharmacy_admin' || req.user.pharmacy_id !== stockEntry.pharmacy_id))) {
-      return res.status(403).json({ error: 'Accès non autorisé à ce stock' });
+      return res.status(403).json({ error: 'Accès non autorisé' });
     }
 
     const { error } = await supabase.from('stocks').delete().eq('id', id);
@@ -362,7 +427,7 @@ app.delete('/api/stocks/:id', authenticateJWT, async (req: AuthRequest, res: Res
   }
 });
 
-// Get all medications (for selection)
+// Get all medications
 app.get('/api/medications', async (req: Request, res: Response) => {
   try {
     const { data, error } = await supabase.from('medications').select('*');
@@ -379,7 +444,7 @@ app.post('/api/stocks', authenticateJWT, async (req: AuthRequest, res: Response)
   const { pharmacy_id, medication_id, quantity, price } = req.body;
 
   if (req.user.role !== 'super_admin' && (req.user.role !== 'pharmacy_admin' || req.user.pharmacy_id !== pharmacy_id)) {
-    return res.status(403).json({ error: 'Accès non autorisé à cette pharmacie' });
+    return res.status(403).json({ error: 'Accès non autorisé' });
   }
 
   try {
@@ -395,29 +460,19 @@ app.post('/api/stocks', authenticateJWT, async (req: AuthRequest, res: Response)
   }
 });
 
-// Get chat messages for a pharmacy
+// Get chat messages
 app.get('/api/messages/:pharmacyId', authenticateJWT, async (req: AuthRequest, res: Response) => {
   const { pharmacyId } = req.params;
-
-  // Patients can only see messages related to them, Admins can see all messages of their pharmacy
-  // For simplicity here, we filter by pharmacy, but in a real app, we'd filter by (pharmacy AND user)
   if (req.user.role === 'pharmacy_admin' && req.user.pharmacy_id !== parseInt(pharmacyId as string)) {
     return res.status(403).json({ error: 'Accès non autorisé' });
   }
 
   try {
-    let query = supabase
+    const { data, error } = await supabase
       .from('messages')
       .select('*, users(full_name)')
-      .eq('pharmacy_id', pharmacyId);
-
-    if (req.user.role === 'patient') {
-      // In a more complex system, we'd have a conversation_id
-      // Here we filter messages where sender is current user OR is from pharmacy to current user
-      // For now, let's keep it simple and filter by pharmacy
-    }
-
-    const { data, error } = await query.order('created_at', { ascending: true });
+      .eq('pharmacy_id', pharmacyId)
+      .order('created_at', { ascending: true });
     
     if (error) throw error;
     res.json(data);
@@ -433,7 +488,7 @@ app.post('/api/messages', authenticateJWT, async (req: AuthRequest, res: Respons
   const sender_id = req.user.id;
 
   if (is_from_pharmacy && req.user.role !== 'pharmacy_admin') {
-    return res.status(403).json({ error: 'Seules les pharmacies peuvent envoyer des messages officiels' });
+    return res.status(403).json({ error: 'Action non autorisée' });
   }
 
   try {
@@ -451,7 +506,7 @@ app.post('/api/messages', authenticateJWT, async (req: AuthRequest, res: Respons
   }
 });
 
-// Create a prescription entry
+// Create a prescription
 app.post('/api/prescriptions', authenticateJWT, async (req: AuthRequest, res: Response) => {
   const { pharmacy_id, image_url } = req.body;
   const patient_id = req.user.id;
@@ -465,32 +520,28 @@ app.post('/api/prescriptions', authenticateJWT, async (req: AuthRequest, res: Re
     res.status(201).json(data[0]);
   } catch (err) {
     console.error('Error saving prescription:', err);
-    res.status(500).json({ error: 'Erreur lors de l\'enregistrement de l\'ordonnance' });
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-// Get prescriptions for a pharmacy
+// Get prescriptions
 app.get('/api/pharmacies/:id/prescriptions', authenticateJWT, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
-
   if (req.user.role !== 'super_admin' && (req.user.role !== 'pharmacy_admin' || req.user.pharmacy_id !== parseInt(id as string))) {
-    // A patient might want to see THEIR prescriptions for this pharmacy
-    if (req.user.role !== 'patient') {
-      return res.status(403).json({ error: 'Accès non autorisé' });
-    }
+    if (req.user.role !== 'patient') return res.status(403).json({ error: 'Accès non autorisé' });
   }
 
   try {
-    let query = supabase
+    let queryBuilder = supabase
       .from('prescriptions')
       .select('*, users(full_name, email)')
       .eq('pharmacy_id', id);
 
     if (req.user.role === 'patient') {
-      query = query.eq('patient_id', req.user.id);
+      queryBuilder = queryBuilder.eq('patient_id', req.user.id);
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    const { data, error } = await queryBuilder.order('created_at', { ascending: false });
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -499,13 +550,12 @@ app.get('/api/pharmacies/:id/prescriptions', authenticateJWT, async (req: AuthRe
   }
 });
 
-// Update prescription status (Ready/Cancelled)
+// Update prescription status
 app.patch('/api/prescriptions/:id', authenticateJWT, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { status } = req.body;
 
   try {
-    // Check if user is the admin of the pharmacy owning the prescription
     const { data: prescription } = await supabase.from('prescriptions').select('pharmacy_id').eq('id', id).single();
     if (!prescription || (req.user.role !== 'super_admin' && (req.user.role !== 'pharmacy_admin' || req.user.pharmacy_id !== prescription.pharmacy_id))) {
       return res.status(403).json({ error: 'Accès non autorisé' });
@@ -519,11 +569,8 @@ app.patch('/api/prescriptions/:id', authenticateJWT, async (req: AuthRequest, re
       .single();
 
     if (error) throw error;
-
-    // Simulation d'envoi de notification
-    console.log(`NOTIFICATION : Envoi d'un email à ${data.users.email} : "Votre ordonnance est ${status} à la pharmacie !"`);
-
-    res.json({ message: 'Statut mis à jour et notification envoyée', data });
+    console.log(`NOTIFICATION : Email envoyé à ${data.users.email}`);
+    res.json({ message: 'Statut mis à jour', data });
   } catch (err) {
     console.error('Error updating prescription:', err);
     res.status(500).json({ error: 'Erreur lors de la mise à jour' });
