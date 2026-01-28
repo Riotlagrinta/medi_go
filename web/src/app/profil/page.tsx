@@ -19,10 +19,11 @@ interface UserProfile {
 
 export default function Profil() {
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [user, setUser] = useState<UserProfile>({
-    full_name: 'Utilisateur Test',
-    email: 'patient@test.com',
+    full_name: '',
+    email: '',
     phone: '',
     address: '',
     medical_info: '',
@@ -31,56 +32,57 @@ export default function Profil() {
   const router = useRouter();
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setUser((prev) => ({
-          ...prev,
-          email: session.user.email || '',
-          full_name: session.user.user_metadata?.full_name || prev.full_name
-        }));
+    const initProfile = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        // 1. Priorité aux données du localStorage
+        const savedUser = localStorage.getItem('user');
+        let profileData = savedUser ? JSON.parse(savedUser) : {};
+
+        // 2. Fusionner avec la session Google si elle existe
+        if (session) {
+          profileData = {
+            ...profileData,
+            email: session.user.email,
+            full_name: profileData.full_name || session.user.user_metadata?.full_name || ''
+          };
+        }
+
+        setUser((prev) => ({ ...prev, ...profileData }));
+      } catch (e) {
+        console.error("Erreur initialisation profil", e);
+      } finally {
+        setPageLoading(false);
       }
     };
-    checkSession();
-
-    const savedUser = localStorage.getItem('user'); // Utiliser 'user' au lieu de 'patient_user'
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        setUser((prev: UserProfile) => ({
-          ...prev,
-          ...parsed
-        }));
-      } catch (e) {
-        console.error("Erreur lecture profil", e);
-      }
-    }
+    
+    initProfile();
   }, []);
-
-  // ... (handlePhotoUpload reste identique)
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      // Sauvegarder dans le localStorage de manière cohérente
-      const sessionUser = {
-        ...user,
-        role: 'patient'
-      };
-      localStorage.setItem('user', JSON.stringify(sessionUser));
-      
-      // On pourrait aussi sauvegarder dans Supabase ici
-      
+      localStorage.setItem('user', JSON.stringify(user));
       setLoading(false);
-      alert('Profil enregistré ! Redirection vers l\'accueil...');
-      router.push('/'); // REDIRECTION VERS L'ACCUEIL
+      
+      // Utilisation de window.location pour une redirection garantie
+      window.location.href = '/'; 
     } catch (error) {
       setLoading(false);
       alert('Erreur lors de la sauvegarde');
     }
   };
+
+  if (pageLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="w-12 h-12 text-emerald-600 animate-spin" />
+      </div>
+    );
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
