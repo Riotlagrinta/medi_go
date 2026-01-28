@@ -18,12 +18,13 @@ export default function Connexion() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/profil`
+          redirectTo: `${window.location.origin}/dashboard`
         }
       });
       if (error) throw error;
-    } catch (err: unknown) {
-      if (err instanceof Error) setError(err.message);
+    } catch (err: any) {
+      console.error('Social Login Error:', err);
+      setError(`Erreur d'authentification : ${err.message || 'Service indisponible'}`);
     }
   };
 
