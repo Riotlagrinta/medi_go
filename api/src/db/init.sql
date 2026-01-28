@@ -96,10 +96,14 @@ CREATE TABLE IF NOT EXISTS reservations (
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
+    password_hash TEXT, -- Peut être nul pour les utilisateurs Google
     full_name VARCHAR(255),
-    role VARCHAR(50) DEFAULT 'patient', -- super_admin, pharmacy_admin, patient, delivery_man
+    role VARCHAR(50) DEFAULT 'patient',
     pharmacy_id INTEGER REFERENCES pharmacies(id) ON DELETE SET NULL,
+    phone VARCHAR(50),
+    address TEXT,
+    medical_info TEXT,
+    photo_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

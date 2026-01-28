@@ -67,6 +67,46 @@ const loginSchema = z.object({
 
 // --- AUTHENTICATION ROUTES ---
 
+app.post('/api/auth/sync-profile', async (req: Request, res: Response) => {
+  const { email, full_name, phone, address, medical_info, role, pharmacy_id } = req.body;
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .upsert({ 
+        email, 
+        full_name, 
+        phone, 
+        address, 
+        medical_info, 
+        role, 
+        pharmacy_id 
+      }, { onConflict: 'email' })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur de synchronisation serveur' });
+  }
+});
+
+app.get('/api/auth/me', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', req.user.email)
+      .single();
+
+    if (error || !data) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.post('/api/auth/register', async (req: Request, res: Response) => {
   try {
     const validatedData = registerSchema.parse(req.body);
@@ -125,6 +165,23 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
     }
     console.error('Login error:', err);
     res.status(500).json({ error: 'Erreur lors de la connexion' });
+  }
+});
+
+app.patch('/api/auth/update-profile', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  const { full_name, phone, address, medical_info } = req.body;
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ full_name, phone, address, medical_info })
+      .eq('email', req.user.email)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur lors de la mise à jour' });
   }
 });
 

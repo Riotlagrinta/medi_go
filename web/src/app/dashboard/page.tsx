@@ -45,24 +45,22 @@ export default function Dashboard() {
   useEffect(() => {
     const checkSession = async () => {
       const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
-      
-      if (!token || !userStr) {
+      if (!token) {
         router.push('/connexion');
         return;
       }
 
-      // VÉRIFICATION DE SÉCURITÉ : Est-ce que l'utilisateur existe toujours ?
-      const { data: { user: supabaseUser }, error } = await supabase.auth.getUser();
-      if (error || !supabaseUser) {
-        console.warn("Session invalide ou compte supprimé. Déconnexion...");
+      try {
+        const response = await api.get('/auth/me');
+        if (!response.ok) throw new Error('Session expirée');
+        
+        const userData = await response.json();
+        setUser(userData);
+        fetchData(userData);
+      } catch (error) {
+        console.error("Erreur session:", error);
         handleLogout();
-        return;
       }
-      
-      const userData = JSON.parse(userStr) as UserSession;
-      setUser(userData);
-      fetchData(userData);
     };
 
     const fetchData = async (userData: UserSession) => {

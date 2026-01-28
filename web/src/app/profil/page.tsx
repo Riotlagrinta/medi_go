@@ -5,7 +5,7 @@ import { User, MapPin, Activity, Camera, Save, ArrowLeft, Pill, LogOut, Loader2 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-
+import { api } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 
 interface UserProfile {
@@ -99,28 +99,41 @@ export default function Profil() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // On prépare l'objet utilisateur avec le rôle ADMIN pour accéder aux fonctionnalités
-      const sessionUser = {
-        ...user,
-        role: 'pharmacy_admin', // On force le rôle admin pour que tu accèdes au dashboard
-        pharmacy_id: 1 // Pharmacie par défaut pour le test
+      // 1. On prépare les données pour l'API
+      const profileData = {
+        full_name: user.full_name,
+        phone: user.phone,
+        address: user.address,
+        medical_info: user.medical_info,
+        role: 'pharmacy_admin', // On garde admin pour tes tests
+        pharmacy_id: 1
       };
 
-      // SAUVEGARDE CRITIQUE
+      // 2. SYNCHRONISATION AVEC L'API (Base de données réelle)
+      // On utilise l'email comme identifiant unique pour la mise à jour
+      await api.post('/auth/sync-profile', {
+        email: user.email,
+        ...profileData
+      });
+
+      // 3. Mise à jour locale
+      const sessionUser = {
+        ...user,
+        ...profileData
+      };
       localStorage.setItem('user', JSON.stringify(sessionUser));
       
-      // Si on est via Google, on récupère et stocke le token d'accès
       if (session?.access_token) {
         localStorage.setItem('token', session.access_token);
       }
 
-      setLoading(false);
-      
-      // REDIRECTION VERS LE TABLEAU DE BORD
+      alert('Profil synchronisé avec succès !');
       window.location.href = '/dashboard'; 
     } catch (error) {
+      console.error(error);
+      alert('Erreur lors de la synchronisation');
+    } finally {
       setLoading(false);
-      alert('Erreur lors de la sauvegarde');
     }
   };
 
