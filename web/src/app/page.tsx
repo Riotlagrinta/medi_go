@@ -26,10 +26,15 @@ const LandingPage = () => (
   <div className="min-h-screen bg-white flex flex-col font-sans text-slate-800">
     {/* Header Public */}
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
-      <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="bg-emerald-600 p-2 rounded-lg"><Pill className="text-white w-6 h-6" /></div>
-          <span className="text-2xl font-bold text-slate-800">MediGo</span>
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <div className="bg-emerald-600 p-2 rounded-lg"><Pill className="text-white w-6 h-6" /></div>
+            <span className="text-2xl font-bold text-slate-800">MediGo</span>
+          </div>
+          <Link href="/a-propos" className="hidden md:block text-slate-500 font-semibold hover:text-emerald-600 transition-colors">
+            À Propos
+          </Link>
         </div>
         <div className="flex gap-4">
           <Link href="/connexion" className="px-5 py-2 font-semibold text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors">
@@ -350,6 +355,7 @@ export default function Home() {
           </div>
           <nav className="hidden md:flex gap-8 text-slate-600 font-medium">
             <Link href="/" className="hover:text-emerald-600">Accueil</Link>
+            <Link href="/a-propos" className="hover:text-emerald-600">À Propos</Link>
             <Link href="/commandes" className="hover:text-emerald-600">Mes Commandes</Link>
             <Link href="/profil" className="hover:text-emerald-600">Mon Profil</Link>
           </nav>
