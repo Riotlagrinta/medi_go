@@ -13,6 +13,25 @@ export default function Connexion() {
   const [error, setError] = useState('');
   const router = useRouter();
 
+  // Détecter la session au chargement (pour le retour de Google)
+  React.useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        // Optionnel : on peut essayer de synchroniser avec notre API ici
+        const user = {
+          id: session.user.id,
+          email: session.user.email,
+          full_name: session.user.user_metadata?.full_name || 'Utilisateur Google',
+          role: 'patient' // Par défaut
+        };
+        localStorage.setItem('user', JSON.stringify(user));
+        router.push('/dashboard');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [router]);
+
   const handleSocialLogin = async (provider: 'google') => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
