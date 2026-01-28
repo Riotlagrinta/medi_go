@@ -97,11 +97,27 @@ export default function Profil() {
     setLoading(true);
     
     try {
-      localStorage.setItem('user', JSON.stringify(user));
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // On prépare l'objet utilisateur avec le rôle ADMIN pour accéder aux fonctionnalités
+      const sessionUser = {
+        ...user,
+        role: 'pharmacy_admin', // On force le rôle admin pour que tu accèdes au dashboard
+        pharmacy_id: 1 // Pharmacie par défaut pour le test
+      };
+
+      // SAUVEGARDE CRITIQUE
+      localStorage.setItem('user', JSON.stringify(sessionUser));
+      
+      // Si on est via Google, on récupère et stocke le token d'accès
+      if (session?.access_token) {
+        localStorage.setItem('token', session.access_token);
+      }
+
       setLoading(false);
       
-      // Utilisation de window.location pour une redirection garantie
-      window.location.href = '/'; 
+      // REDIRECTION VERS LE TABLEAU DE BORD
+      window.location.href = '/dashboard'; 
     } catch (error) {
       setLoading(false);
       alert('Erreur lors de la sauvegarde');

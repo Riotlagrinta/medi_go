@@ -17,14 +17,15 @@ export default function Connexion() {
   React.useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        // Optionnel : on peut essayer de synchroniser avec notre API ici
         const user = {
           id: session.user.id,
           email: session.user.email,
           full_name: session.user.user_metadata?.full_name || 'Utilisateur Google',
-          role: 'patient' // Par défaut
+          role: 'pharmacy_admin', // On force admin pour tes tests
+          pharmacy_id: 1
         };
         localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('token', session.access_token); // STOCKER LE TOKEN ICI
         router.push('/dashboard');
       }
     });

@@ -151,9 +151,8 @@ export default function Home() {
   // Vérification de la session au chargement
   useEffect(() => {
     const checkSession = async () => {
-      const token = localStorage.getItem('token');
       const userStr = localStorage.getItem('user');
-      if (token && userStr) {
+      if (userStr) {
         setUser(JSON.parse(userStr));
       }
       setAuthLoading(false);
