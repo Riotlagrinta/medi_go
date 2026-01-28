@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, ArrowLeft, CheckCircle2, XCircle, User, Calendar as CalendarIcon } from 'lucide-react';
 import Link from 'next/link';
+import { api } from '@/lib/api';
 
 interface Appointment {
   id: number;
@@ -22,16 +23,15 @@ export default function DashboardRDV() {
       if (userStr) {
         const user = JSON.parse(userStr);
         setPharmacyName(user.pharmacy_name);
-        fetchAppointments(user.pharmacy_name);
+        fetchAppointments();
       }
     };
 
-    const fetchAppointments = async (name: string) => {
+    const fetchAppointments = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/appointments`);
+        const response = await api.get('/appointments');
         const data = await response.json();
-        const myApp = (data as Appointment[]).filter((a: Appointment) => a.pharmacy_name === name);
-        setAppointments(myApp);
+        setAppointments(data as Appointment[]);
       } catch (error) {
         console.error(error);
       }

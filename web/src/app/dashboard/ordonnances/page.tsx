@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Camera, Clock, CheckCircle2, XCircle, ArrowLeft, ExternalLink, User } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { api } from '@/lib/api';
 
 interface Prescription {
   id: number;
@@ -22,7 +23,7 @@ export default function DashboardOrdonnances() {
       const userStr = localStorage.getItem('user');
       if (!userStr) return;
       const user = JSON.parse(userStr);
-      const response = await fetch(`http://localhost:3001/api/pharmacies/${user.pharmacy_id}/prescriptions`);
+      const response = await api.get(`/pharmacies/${user.pharmacy_id}/prescriptions`);
       const data = await response.json();
       setPrescriptions(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -38,11 +39,7 @@ export default function DashboardOrdonnances() {
 
   const updateStatus = async (id: number, status: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/prescriptions/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
+      const response = await api.patch(`/prescriptions/${id}`, { status });
 
       if (response.ok) {
         fetchPrescriptions(); 

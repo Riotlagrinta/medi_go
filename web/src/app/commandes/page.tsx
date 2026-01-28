@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Pill, MapPin, ArrowLeft, Package, Calendar, Camera, Clock } from 'lucide-react';
+import { Pill, MapPin, ArrowLeft, Package, Calendar, Camera, Clock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { api } from '@/lib/api';
 
 interface Reservation {
   id: number;
@@ -43,25 +44,15 @@ export default function Commandes() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const userStr = localStorage.getItem('patient_user');
-        const user = userStr ? JSON.parse(userStr) : null;
-
         const [resResponse, appResponse, presResponse] = await Promise.all([
-          fetch('http://localhost:3001/api/reservations'),
-          fetch('http://localhost:3001/api/appointments'),
-          fetch('http://localhost:3001/api/pharmacies/1/prescriptions') 
+          api.get('/reservations'),
+          api.get('/appointments'),
+          api.get('/pharmacies/1/prescriptions') // Note: pharmacy 1 as default for now
         ]);
         
-        const resData = await resResponse.json();
-        const appData = await appResponse.json();
-        const presData = await presResponse.json();
-
-        if (user) {
-          const phone = user.phone;
-          setReservations(Array.isArray(resData) ? resData : []);
-          setAppointments(Array.isArray(appData) ? appData : []);
-          setPrescriptions(Array.isArray(presData) ? presData.filter((p: Prescription) => p.patient_phone === phone) : []);
-        }
+        setReservations(await resResponse.json());
+        setAppointments(await appResponse.json());
+        setPrescriptions(await presResponse.json());
       } catch (error) {
         console.error('Failed to fetch data:', error);
       } finally {
@@ -131,7 +122,7 @@ export default function Commandes() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-20"><Loader2 /></div>
+          <div className="flex justify-center py-20"><LoaderIcon /></div>
         ) : activeTab === 'reservations' ? (
           <div className="space-y-4">
             {reservations.map((res) => (
@@ -220,7 +211,7 @@ export default function Commandes() {
   );
 }
 
-function Loader2() {
+function LoaderIcon() {
   return <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>;
 }
 

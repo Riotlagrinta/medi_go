@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Trash2, ArrowLeft, Package } from 'lucide-react';
 import Link from 'next/link';
+import { api } from '@/lib/api';
 
 interface StockItem {
   stock_id: number;
@@ -28,7 +29,7 @@ export default function Stocks() {
 
   const fetchStocks = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/pharmacies/${id}/stocks`);
+      const response = await api.get(`/pharmacies/${id}/stocks`);
       const data = await response.json();
       setStocks(Array.isArray(data) ? (data as StockItem[]) : []);
     } catch (error) {
@@ -39,7 +40,7 @@ export default function Stocks() {
 
   const fetchAllMedications = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/medications');
+      const response = await api.get('/medications');
       const data = await response.json();
       setAllMedications(data as Medication[]);
     } catch (error) {
@@ -64,7 +65,7 @@ export default function Stocks() {
   const deleteStock = async (stockId: number) => {
     if (!confirm("Supprimer ce médicament ?")) return;
     try {
-      const response = await fetch(`http://localhost:3001/api/stocks/${stockId}`, { method: 'DELETE' });
+      const response = await api.delete(`/stocks/${stockId}`);
       if (response.ok && pharmacyId) fetchStocks(pharmacyId);
     } catch (error) { console.error(error); }
   };
@@ -73,15 +74,11 @@ export default function Stocks() {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     try {
-      const response = await fetch('http://localhost:3001/api/stocks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          pharmacy_id: pharmacyId, 
-          medication_id: formData.get('medication_id'), 
-          quantity: formData.get('quantity'),
-          price: formData.get('price')
-        })
+      const response = await api.post('/stocks', { 
+        pharmacy_id: pharmacyId, 
+        medication_id: parseInt(formData.get('medication_id') as string), 
+        quantity: parseInt(formData.get('quantity') as string),
+        price: parseFloat(formData.get('price') as string)
       });
       if (response.ok) {
         setShowAddForm(false);
@@ -133,6 +130,7 @@ export default function Stocks() {
               <div className="md:col-span-3">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Médicament</label>
                 <select name="medication_id" required className="w-full bg-slate-50 border-none rounded-xl py-4 px-4 focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-700">
+                  <option value="">Sélectionnez un médicament</option>
                   {allMedications.map(med => (
                     <option key={med.id} value={med.id}>{med.name} ({med.category})</option>
                   ))}
