@@ -18,7 +18,7 @@ app.use(helmet());
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
-  'https://medi-go.vercel.app'
+  'https://medi-go-murex.vercel.app'
 ];
 
 app.use(cors({
