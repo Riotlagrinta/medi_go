@@ -9,6 +9,7 @@ import {
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 interface Pharmacy {
   id: number;
@@ -48,6 +49,14 @@ export default function Dashboard() {
       
       if (!token || !userStr) {
         router.push('/connexion');
+        return;
+      }
+
+      // VÉRIFICATION DE SÉCURITÉ : Est-ce que l'utilisateur existe toujours ?
+      const { data: { user: supabaseUser }, error } = await supabase.auth.getUser();
+      if (error || !supabaseUser) {
+        console.warn("Session invalide ou compte supprimé. Déconnexion...");
+        handleLogout();
         return;
       }
       
