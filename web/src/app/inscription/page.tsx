@@ -129,23 +129,12 @@ export default function Inscription() {
 
           {error && <div className="bg-red-50 text-red-600 text-xs font-bold p-4 rounded-2xl text-center border border-red-100 animate-shake">{error}</div>}
 
-          {success ? (
-            <div className="bg-emerald-50 text-emerald-700 p-6 md:p-8 rounded-[24px] text-center border-2 border-emerald-100 animate-in zoom-in duration-300">
-              <div className="bg-emerald-500 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-200">
-                <Mail className="text-white w-7 h-7" />
-              </div>
-              <h3 className="font-black text-xl mb-2 tracking-tight">Vérifiez vos emails</h3>
-              <p className="text-sm leading-relaxed mb-6">Un lien de confirmation a été envoyé à <br/><strong className="text-emerald-800">{formData.email}</strong>.</p>
-              <Link href="/connexion" className="inline-block w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold hover:bg-emerald-700 transition-all">Retour à la connexion</Link>
-            </div>
-          ) : (
-            <button 
-              disabled={loading}
-              className="w-full bg-slate-900 text-white py-4.5 rounded-2xl font-black text-lg hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200 mt-4"
-            >
-              {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Créer mon compte <ArrowRight className="w-5 h-5" /></>}
-            </button>
-          )}
+          <button 
+            disabled={loading}
+            className="w-full bg-slate-900 text-white py-4.5 rounded-2xl font-black text-lg hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200 mt-4"
+          >
+            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Créer mon compte <ArrowRight className="w-5 h-5" /></>}
+          </button>
         </form>
 
         <div className="mt-8 md:mt-10 text-center">
