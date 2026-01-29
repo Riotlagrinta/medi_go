@@ -100,7 +100,24 @@ app.get('/api/auth/me', authenticateJWT, async (req: AuthRequest, res: Response)
       .eq('email', req.user.email)
       .single();
 
-    if (error || !data) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    if (error || !data) {
+      // L'utilisateur a un token valide mais n'est pas dans notre SQL
+      // On le crée à la volée (Auto-Sync)
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert([{ 
+          email: req.user.email, 
+          full_name: req.user.full_name || 'Utilisateur Google',
+          role: 'pharmacy_admin', // On met admin pour tes tests
+          pharmacy_id: 1
+        }])
+        .select()
+        .single();
+
+      if (createError) return res.status(500).json({ error: 'Erreur création profil' });
+      return res.json(newUser);
+    }
+
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });

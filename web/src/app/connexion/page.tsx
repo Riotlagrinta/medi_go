@@ -13,8 +13,17 @@ export default function Connexion() {
   const [error, setError] = useState('');
   const router = useRouter();
 
-  // Détecter la session au chargement (pour le retour de Google)
+  // Détecter la session au chargement
   React.useEffect(() => {
+    const checkExistingSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        localStorage.setItem('token', session.access_token);
+        router.push('/dashboard');
+      }
+    };
+    checkExistingSession();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
         const user = {
