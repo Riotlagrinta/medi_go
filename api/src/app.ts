@@ -107,9 +107,9 @@ app.get('/api/auth/me', authenticateJWT, async (req: AuthRequest, res: Response)
         .from('users')
         .insert([{ 
           email: req.user.email, 
-          full_name: req.user.full_name || 'Utilisateur Google',
-          role: 'pharmacy_admin', // On met admin pour tes tests
-          pharmacy_id: 1
+          full_name: req.user.full_name || 'Nouvel Utilisateur',
+          role: 'patient', // On remet 'patient' par défaut ici
+          pharmacy_id: null
         }])
         .select()
         .single();

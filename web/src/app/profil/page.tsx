@@ -104,9 +104,8 @@ export default function Profil() {
         full_name: user.full_name,
         phone: user.phone,
         address: user.address,
-        medical_info: user.medical_info,
-        role: 'pharmacy_admin', // On garde admin pour tes tests
-        pharmacy_id: 1
+        medical_info: user.medical_info
+        // On ne touche plus au rôle ici
       };
 
       // 2. SYNCHRONISATION AVEC L'API (Base de données réelle)

@@ -36,7 +36,7 @@ export default function Inscription() {
           email: formData.email,
           password: formData.password,
           full_name: formData.full_name,
-          role: 'patient'
+          role: 'patient' // Forcé en patient
         }),
       });
 
