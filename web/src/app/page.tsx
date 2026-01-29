@@ -151,11 +151,20 @@ export default function Home() {
   // Vérification de la session au chargement
   useEffect(() => {
     const checkSession = async () => {
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        setUser(JSON.parse(userStr));
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const parsedUser = JSON.parse(userStr);
+          if (parsedUser && typeof parsedUser === 'object') {
+            setUser(parsedUser);
+          }
+        }
+      } catch (e) {
+        console.error("Erreur session:", e);
+        localStorage.removeItem('user');
+      } finally {
+        setAuthLoading(false);
       }
-      setAuthLoading(false);
     };
     checkSession();
   }, []);
@@ -197,20 +206,21 @@ export default function Home() {
       const response = await api.get('/messages/1');
       if (response.ok) {
         const data = await response.json();
-        setMessages(data);
+        setMessages(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error('Error fetching messages:', err);
+      setMessages([]);
     }
   };
 
   useEffect(() => {
     if (showChat && user) {
       fetchMsgs();
-      const interval = setInterval(fetchMsgs, 5000); // Poll for new messages every 5s
+      const interval = setInterval(fetchMsgs, 5000); 
       return () => clearInterval(interval);
     }
-  }, [showChat, user]);
+  }, [showChat, !!user]);
 
   useEffect(() => {
     if (!user) return;
@@ -219,13 +229,16 @@ export default function Home() {
       try {
         const response = await api.get(`/search?q=&lat=${lat}&lng=${lng}&radius=10000`);
         const data = await response.json();
-        // Extract pharmacies from search results
-        const uniquePharmacies = Array.from(new Set(data.map((r: any) => r.pharmacy_id)))
-          .map(id => {
-            const r = data.find((x: any) => x.pharmacy_id === id);
-            return { id: r.pharmacy_id, name: r.pharmacy_name, address: r.address, distance: r.distance };
-          });
-        setNearbyPharmacies(uniquePharmacies);
+        if (Array.isArray(data)) {
+          const uniquePharmacies = Array.from(new Set(data.map((r: any) => r.pharmacy_id)))
+            .map(id => {
+              const r = data.find((x: any) => x.pharmacy_id === id);
+              return { id: r.pharmacy_id, name: r.pharmacy_name, address: r.address, distance: r.distance };
+            });
+          setNearbyPharmacies(uniquePharmacies);
+        } else {
+          setNearbyPharmacies([]);
+        }
       } catch {
         setNearbyPharmacies([]);
       }
@@ -360,13 +373,13 @@ export default function Home() {
           </nav>
           <div className="flex gap-4">
             <button 
-              onClick={() => { localStorage.clear(); supabase.auth.signOut(); window.location.reload(); }}
+              onClick={() => { localStorage.clear(); window.location.reload(); }}
               className="hidden md:flex items-center gap-2 px-4 py-2 text-red-500 font-bold hover:bg-red-50 rounded-full transition-all"
             >
               <LogOut className="w-4 h-4" /> Déconnexion
             </button>
-            <Link href="/dashboard" className="bg-emerald-50 text-emerald-600 px-5 py-2 rounded-full font-semibold hover:bg-emerald-100">
-               Mon Espace
+            <Link href="/profil" className="bg-emerald-50 text-emerald-600 px-5 py-2 rounded-full font-semibold hover:bg-emerald-100">
+               {user?.full_name || 'Mon Espace'}
             </Link>
           </div>
         </div>
