@@ -187,6 +187,13 @@ export default function Dashboard() {
               </button>
             </div>
             
+            <button 
+              onClick={handleLogout}
+              className="lg:hidden p-2 text-red-500 bg-red-50 rounded-xl"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+
             <button className="relative p-2 text-slate-400 hover:text-emerald-600 transition-colors">
               <Bell className="w-6 h-6" />
               {unreadCount > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>}

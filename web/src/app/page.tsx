@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Clock, Calendar, Pill, Phone, Loader2, MessageCircle, X, Send, Camera, ShieldCheck, Heart, User } from 'lucide-react';
+import { Search, MapPin, Clock, Calendar, Pill, Phone, Loader2, MessageCircle, X, Send, Camera, ShieldCheck, Heart, User, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -359,8 +359,13 @@ export default function Home() {
             <Link href="/profil" className="hover:text-emerald-600">Mon Profil</Link>
           </nav>
           <div className="flex gap-4">
-             {/* Optionnel: Bouton Déconnexion pourrait être ajouté ici */}
-            <Link href="/profil" className="bg-emerald-50 text-emerald-600 px-5 py-2 rounded-full font-semibold hover:bg-emerald-100">
+            <button 
+              onClick={() => { localStorage.clear(); supabase.auth.signOut(); window.location.reload(); }}
+              className="hidden md:flex items-center gap-2 px-4 py-2 text-red-500 font-bold hover:bg-red-50 rounded-full transition-all"
+            >
+              <LogOut className="w-4 h-4" /> Déconnexion
+            </button>
+            <Link href="/dashboard" className="bg-emerald-50 text-emerald-600 px-5 py-2 rounded-full font-semibold hover:bg-emerald-100">
                Mon Espace
             </Link>
           </div>
