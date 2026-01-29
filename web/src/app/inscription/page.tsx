@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Pill, Mail, Lock, User, ArrowRight, Loader2, Chrome } from 'lucide-react';
+import { Pill, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -16,22 +16,7 @@ export default function Inscription() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const router = useRouter();
-
-  const handleSocialLogin = async (provider: 'google' | 'apple') => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/profil`
-        }
-      });
-      if (error) throw error;
-    } catch (err: unknown) {
-      if (err instanceof Error) setError(err.message);
-    }
-  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,21 +66,6 @@ export default function Inscription() {
           </div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-800 mb-2 tracking-tight">Créer un compte</h1>
           <p className="text-sm md:text-base text-slate-500">Rejoignez MediGo dès aujourd&apos;hui</p>
-        </div>
-
-        {/* Social Logins */}
-        <div className="mb-6 md:mb-8">
-          <button 
-            onClick={() => handleSocialLogin('google')}
-            className="w-full flex items-center justify-center gap-3 py-4 px-4 border-2 border-slate-50 rounded-2xl hover:bg-slate-50 active:scale-95 transition-all font-bold text-slate-600 text-sm"
-          >
-            <Chrome className="w-5 h-5 text-red-500" /> S&apos;inscrire avec Google
-          </button>
-        </div>
-
-        <div className="relative mb-6 md:mb-8 text-center">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-          <span className="relative bg-white px-4 text-[10px] text-slate-400 uppercase font-black tracking-widest">Ou avec votre email</span>
         </div>
 
         <form onSubmit={handleRegister} className="space-y-4 md:space-y-5">

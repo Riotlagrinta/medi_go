@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Pill, Mail, Lock, ArrowRight, Loader2, Chrome } from 'lucide-react';
+import { Pill, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -12,54 +12,6 @@ export default function Connexion() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
-
-  // DERNIÈRE CHANCE : Détection agressive de session
-  React.useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        console.log("Session Google détectée, redirection forcée...");
-        localStorage.setItem('token', session.access_token);
-        // On force le rôle admin pour tes tests
-        const user = {
-          id: session.user.id,
-          email: session.user.email,
-          full_name: session.user.user_metadata?.full_name || 'Utilisateur Google',
-          role: 'pharmacy_admin',
-          pharmacy_id: 1
-        };
-        localStorage.setItem('user', JSON.stringify(user));
-        window.location.href = '/dashboard'; // Redirection brute et garantie
-      }
-    };
-    
-    checkSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        localStorage.setItem('token', session.access_token);
-        window.location.href = '/dashboard';
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleSocialLogin = async (provider: 'google') => {
-    try {
-      setError('');
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`
-        }
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      console.error('Social Login Error:', err);
-      setError(`Erreur Google : ${err.message || 'Vérifiez vos réglages Supabase'}`);
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,8 +48,7 @@ export default function Connexion() {
   const checkEnv = () => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    alert(`URL chargée: ${url ? 'OUI' : 'NON'}\nClé chargée: ${key ? 'OUI' : 'NON'}`);
-    console.log("URL:", url);
+    alert(`Système opérationnel : ${url && key ? 'OUI' : 'NON'}`);
   };
 
   return (
@@ -107,26 +58,12 @@ export default function Connexion() {
           <button onClick={checkEnv} className="text-[10px] text-slate-300 hover:text-slate-500 uppercase font-black tracking-widest bg-slate-50 px-3 py-1 rounded-full">Diagnostic</button>
         </div>
         
-        <div className="text-center mb-8 md:mb-10">
+        <div className="text-center mb-10">
           <div className="bg-emerald-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-100 rotate-3">
             <Pill className="text-white w-8 h-8" />
           </div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-800 mb-2 tracking-tight">Bon retour !</h1>
-          <p className="text-sm md:text-base text-slate-500">Connectez-vous à votre espace MediGo</p>
-        </div>
-
-        <div className="mb-6 md:mb-8">
-          <button 
-            onClick={() => handleSocialLogin('google')}
-            className="w-full flex items-center justify-center gap-3 py-4 px-4 border-2 border-slate-50 rounded-2xl hover:bg-slate-50 active:scale-95 transition-all font-bold text-slate-600 text-sm"
-          >
-            <Chrome className="w-5 h-5 text-red-500" /> Continuer avec Google
-          </button>
-        </div>
-
-        <div className="relative mb-6 md:mb-8 text-center">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-          <span className="relative bg-white px-4 text-[10px] text-slate-400 uppercase font-black tracking-widest">Ou par email</span>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-800 mb-2 tracking-tight">Accès MediGo</h1>
+          <p className="text-sm md:text-base text-slate-500">Connectez-vous à votre espace professionnel</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4 md:space-y-5">
