@@ -143,13 +143,13 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
 
     const token = jwt.sign({ id: data.id, email: data.email, role: data.role, pharmacy_id: data.pharmacy_id }, JWT_SECRET, { expiresIn: '24h' });
     res.status(201).json({ token, user: { id: data.id, email: data.email, role: data.role, full_name: data.full_name } });
-  } catch (err) {
+  } catch (err: any) {
     if (err instanceof z.ZodError) {
       const message = err.issues[0]?.message || 'Données invalides';
       return res.status(400).json({ error: message });
     }
     console.error('Registration error:', err);
-    res.status(500).json({ error: 'Erreur lors de l\'inscription' });
+    res.status(500).json({ error: 'Erreur lors de l\'inscription', details: err.message });
   }
 });
 
@@ -175,13 +175,13 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
 
     const token = jwt.sign({ id: data.id, email: data.email, role: data.role, pharmacy_id: data.pharmacy_id }, JWT_SECRET, { expiresIn: '24h' });
     res.json({ token, user: { id: data.id, email: data.email, role: data.role, full_name: data.full_name, pharmacy_id: data.pharmacy_id } });
-  } catch (err) {
+  } catch (err: any) {
     if (err instanceof z.ZodError) {
       const message = err.issues[0]?.message || 'Données invalides';
       return res.status(400).json({ error: message });
     }
     console.error('Login error:', err);
-    res.status(500).json({ error: 'Erreur lors de la connexion' });
+    res.status(500).json({ error: 'Erreur lors de la connexion', details: err.message });
   }
 });
 
