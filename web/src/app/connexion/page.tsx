@@ -13,37 +13,41 @@ export default function Connexion() {
   const [error, setError] = useState('');
   const router = useRouter();
 
-  // Détecter la session au chargement
+  // DERNIÈRE CHANCE : Détection agressive de session
   React.useEffect(() => {
-    const checkExistingSession = async () => {
+    const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        console.log("Session Google détectée, redirection forcée...");
         localStorage.setItem('token', session.access_token);
-        router.push('/dashboard');
-      }
-    };
-    checkExistingSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
+        // On force le rôle admin pour tes tests
         const user = {
           id: session.user.id,
           email: session.user.email,
           full_name: session.user.user_metadata?.full_name || 'Utilisateur Google',
-          role: 'pharmacy_admin', // On force admin pour tes tests
+          role: 'pharmacy_admin',
           pharmacy_id: 1
         };
         localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('token', session.access_token); // STOCKER LE TOKEN ICI
-        router.push('/dashboard');
+        window.location.href = '/dashboard'; // Redirection brute et garantie
+      }
+    };
+    
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        localStorage.setItem('token', session.access_token);
+        window.location.href = '/dashboard';
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [router]);
+  }, []);
 
   const handleSocialLogin = async (provider: 'google') => {
     try {
+      setError('');
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -53,7 +57,7 @@ export default function Connexion() {
       if (error) throw error;
     } catch (err: any) {
       console.error('Social Login Error:', err);
-      setError(`Erreur d'authentification : ${err.message || 'Service indisponible'}`);
+      setError(`Erreur Google : ${err.message || 'Vérifiez vos réglages Supabase'}`);
     }
   };
 
