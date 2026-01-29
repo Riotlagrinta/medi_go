@@ -249,7 +249,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {reservations.map((res) => (
+                  {Array.isArray(reservations) && reservations.map((res) => (
                     <tr key={res.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-6 py-4">
                         <span className="font-bold text-slate-700 text-sm block">{res.medication_name}</span>

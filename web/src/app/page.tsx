@@ -404,7 +404,7 @@ export default function Home() {
         <section className="max-w-7xl mx-auto px-4 py-10 md:py-12">
           <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-6 px-1">Résultats pour &quot;{query}&quot;</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {results.map((res, idx) => (
+            {Array.isArray(results) && results.map((res, idx) => (
               <div key={idx} className="bg-white p-5 md:p-6 rounded-[28px] md:rounded-3xl shadow-sm border border-slate-100 flex flex-col">
                 <div className="flex justify-between items-start mb-4">
                   <div className="min-w-0 flex-1">
@@ -498,9 +498,9 @@ export default function Home() {
             <button onClick={() => setShowChat(false)}><X className="w-5 h-5" /></button>
           </div>
           <div className="h-80 overflow-y-auto p-4 space-y-4 bg-slate-50">
-            {messages.map((m) => (
-              <div key={m.id} className={`flex ${m.sender_type === 'patient' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${m.sender_type === 'patient' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-700 shadow-sm border border-slate-100'}`}>{m.content}</div>
+            {Array.isArray(messages) && messages.map((m) => (
+              <div key={m.id} className={`flex ${!m.is_from_pharmacy ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${!m.is_from_pharmacy ? 'bg-emerald-600 text-white' : 'bg-white text-slate-700 shadow-sm border border-slate-100'}`}>{m.content}</div>
               </div>
             ))}
           </div>
