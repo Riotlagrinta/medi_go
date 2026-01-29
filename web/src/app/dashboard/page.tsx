@@ -52,14 +52,14 @@ export default function Dashboard() {
 
       try {
         const response = await api.get('/auth/me');
-        if (!response.ok) throw new Error('Session expirée');
+        if (!response.ok) throw new Error('Invalid session');
         
         const userData = await response.json();
         setUser(userData);
         fetchData(userData);
       } catch (error) {
-        console.error("Erreur session:", error);
-        handleLogout();
+        localStorage.clear();
+        router.push('/connexion');
       }
     };
 

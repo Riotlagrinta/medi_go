@@ -151,17 +151,23 @@ export default function Home() {
   // Vérification de la session au chargement
   useEffect(() => {
     const checkSession = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setAuthLoading(false);
+        return;
+      }
+
       try {
-        const userStr = localStorage.getItem('user');
-        if (userStr) {
-          const parsedUser = JSON.parse(userStr);
-          if (parsedUser && typeof parsedUser === 'object') {
-            setUser(parsedUser);
-          }
+        const response = await api.get('/auth/me');
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+        } else {
+          localStorage.clear();
         }
       } catch (e) {
-        console.error("Erreur session:", e);
-        localStorage.removeItem('user');
+        console.error("Session check failed");
       } finally {
         setAuthLoading(false);
       }
