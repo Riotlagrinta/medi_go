@@ -129,6 +129,9 @@ app.get('/api/search', async (req: Request, res: Response) => {
       user_lng: parseFloat(lng as string),
       radius_meters: parseInt(radius as string)
     });
+    
+    // Formatter pour inclure lat/lng si présents (PostGIS renvoie des objets géographiques)
+    // Note: Dans notre fonction RPC search_pharmacies, nous devrions aussi extraire lat/lng
     if (error) throw error;
     res.json(data);
   } catch (err) {

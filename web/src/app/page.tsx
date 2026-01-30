@@ -142,11 +142,12 @@ const LandingPage = () => (
 
 import { api } from '@/lib/api';
 
+import { PharmacyMap } from '@/components/Map';
+
 // Composant Principal (Dashboard)
 export default function Home() {
-  const router = useRouter();
-  const [authLoading, setAuthLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  // ... (existing states)
+
 
   // Vérification de la session au chargement
   useEffect(() => {
@@ -437,6 +438,15 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* CARTE INTERACTIVE - VISIBLE SI CONNECTÉ */}
+      {user && (
+        <section className="max-w-7xl mx-auto px-4 -mt-4 mb-8">
+          <div className="bg-white p-2 rounded-[36px] shadow-xl border border-slate-100">
+            <PharmacyMap pharmacies={results.length > 0 ? results : nearbyPharmacies} />
+          </div>
+        </section>
+      )}
 
       {searched && (
         <section className="max-w-7xl mx-auto px-4 py-10 md:py-12">
