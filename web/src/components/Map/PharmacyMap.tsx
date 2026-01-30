@@ -1,6 +1,6 @@
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MapPin, Phone, Clock } from 'lucide-react';
@@ -12,8 +12,6 @@ const DefaultIcon = L.icon({
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
-
-L.Marker.prototype.options.icon = DefaultIcon;
 
 const OnDutyIcon = L.icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
@@ -36,11 +34,19 @@ export default function PharmacyMap({ pharmacies }: { pharmacies: Pharmacy[] }) 
   const center: [number, number] = [6.1372, 1.2255]; // Lomé center
 
   return (
-    <div className="h-[400px] w-full rounded-[32px] overflow-hidden shadow-inner border-4 border-white">
-      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
+    <div className="h-[500px] w-full rounded-[32px] overflow-hidden shadow-2xl border-4 border-white relative group">
+      {/* Overlay style Google Maps */}
+      <div className="absolute top-4 left-4 z-[1000] bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg border border-slate-100 flex items-center gap-2 pointer-events-none">
+        <div className="bg-emerald-600 p-1.5 rounded-lg"><MapPin className="text-white w-3 h-3" /></div>
+        <span className="text-xs font-black text-slate-800 uppercase tracking-tighter">Exploration Lomé</span>
+      </div>
+
+      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false}>
+        <ZoomControl position="bottomright" />
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+          subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+          attribution='&copy; Google Maps'
         />
         {pharmacies.map((p) => (
           <Marker 
@@ -48,7 +54,7 @@ export default function PharmacyMap({ pharmacies }: { pharmacies: Pharmacy[] }) 
             position={[p.lat, p.lng]} 
             icon={p.is_on_duty ? OnDutyIcon : DefaultIcon}
           >
-            <Popup className="custom-popup">
+            <Popup>
               <div className="p-2 min-w-[150px]">
                 <h3 className="font-black text-slate-800 text-sm mb-1">{p.name}</h3>
                 <p className="text-[10px] text-slate-500 mb-2 flex items-center gap-1">
