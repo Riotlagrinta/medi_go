@@ -35,7 +35,9 @@ export default function Connexion() {
       localStorage.setItem('user', JSON.stringify(data.user));
       
       // REDIRECTION INTELLIGENTE BASÉE SUR LE RÔLE
-      if (data.user.role === 'pharmacy_admin' || data.user.role === 'super_admin') {
+      if (data.user.role === 'super_admin') {
+        router.push('/super-admin');
+      } else if (data.user.role === 'pharmacy_admin') {
         router.push('/dashboard');
       } else {
         router.push('/');

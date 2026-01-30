@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Pill, Plus, MapPin, Phone, ShieldCheck, Trash2, Globe, Activity } from 'lucide-react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 interface Pharmacy {
@@ -98,12 +99,17 @@ export default function SuperAdmin() {
               <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Administration Système</p>
             </div>
           </div>
-          <button 
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="bg-white text-slate-950 p-3 rounded-xl shadow-lg active:scale-95 transition-all"
-          >
-            <Plus className={`w-6 h-6 transition-transform ${showAddForm ? 'rotate-45' : ''}`} />
-          </button>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="hidden md:block text-xs font-bold text-slate-400 hover:text-white transition-colors">
+              Voir le site public
+            </Link>
+            <button 
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="bg-white text-slate-950 p-3 rounded-xl shadow-lg active:scale-95 transition-all"
+            >
+              <Plus className={`w-6 h-6 transition-transform ${showAddForm ? 'rotate-45' : ''}`} />
+            </button>
+          </div>
         </div>
       </div>
 
