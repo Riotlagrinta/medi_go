@@ -279,15 +279,31 @@ export default function Home() {
 
   const handleOnDutySearch = async () => {
     setLoading(true);
+    setSearched(true);
+    setQuery('Pharmacies de Garde');
     try {
       const response = await api.get('/pharmacies/on-duty');
       const data = await response.json();
-      let q = "pharmacies de garde Lomé Togo";
-      if (data.length > 0) q = `pharmacies de garde ${data.map((p: {name: string}) => p.name).join(' ')} Lomé Togo`;
-      window.open(`https://www.google.com/maps/search/${encodeURIComponent(q)}`, '_blank');
+      
+      // Formatter les résultats pour l'affichage (simuler medication_id pour la liste)
+      const formatted = data.map((p: any) => ({
+        pharmacy_id: p.id,
+        pharmacy_name: p.name,
+        address: p.address,
+        phone: p.phone,
+        is_on_duty: p.is_on_duty,
+        medication_id: 0,
+        medication_name: 'Consulter catalogue',
+        price: '---',
+        distance: 0
+      }));
+      
+      setResults(formatted);
     } catch {
-      window.open(`https://www.google.com/maps/search/pharmacies+de+garde+Lomé+Togo`, '_blank');
-    } finally { setLoading(false); }
+      setNotification({ message: 'Erreur lors de la recherche des pharmacies de garde', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReserve = async (pharmacyId: number, medicationId: number) => {

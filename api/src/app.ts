@@ -17,6 +17,70 @@ app.use(express.json({ limit: '10kb' }));
 
 // --- ROUTES AUTH ---
 
+app.get('/api/pharmacies/:id/prescriptions', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    const { data, error } = await supabase.from('prescriptions').select('*, users(full_name, email)').eq('pharmacy_id', req.params.id).order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: 'Erreur ordonnances' }); }
+});
+
+app.post('/api/prescriptions', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    const { pharmacy_id, image_url } = req.body;
+    const { data, error } = await supabase.from('prescriptions').insert([{ patient_id: req.user.id, pharmacy_id, image_url, status: 'pending' }]).select().single();
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) { res.status(500).json({ error: 'Erreur sauvegarde ordonnance' }); }
+});
+
+app.post('/api/stocks', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    const { pharmacy_id, medication_id, quantity, price } = req.body;
+    const { data, error } = await supabase.from('stocks').insert([{ pharmacy_id, medication_id, quantity, price }]).select().single();
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) { res.status(500).json({ error: 'Erreur ajout stock' }); }
+});
+
+app.delete('/api/stocks/:id', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    const { error } = await supabase.from('stocks').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ message: 'Supprimé' });
+  } catch (err) { res.status(500).json({ error: 'Erreur suppression stock' }); }
+});
+
+app.get('/api/medications', async (req: Request, res: Response) => {
+  try {
+    const { data, error } = await supabase.from('medications').select('*');
+    if (error) throw error;
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: 'Erreur medications' }); }
+});
+
+app.patch('/api/prescriptions/:id', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    const { data, error } = await supabase.from('prescriptions').update({ status: req.body.status }).eq('id', req.params.id).select().single();
+    if (error) throw error;
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: 'Erreur mise à jour ordonnance' }); }
+});
+
+app.get('/api/pharmacies/nearby', async (req: Request, res: Response) => {
+  const { lat, lng, radius = 10000 } = req.query;
+  try {
+    const { data, error } = await supabase.rpc('search_pharmacies', {
+      search_query: '%%',
+      user_lat: parseFloat(lat as string),
+      user_lng: parseFloat(lng as string),
+      radius_meters: parseInt(radius as string)
+    });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: 'Erreur pharmacies à proximité' }); }
+});
+
 app.post('/api/auth/register', async (req: Request, res: Response) => {
   try {
     const { email, password, full_name } = req.body;
@@ -107,5 +171,51 @@ app.get('/api/messages/:pharmacyId', authenticateJWT, async (req: AuthRequest, r
     res.json(data);
   } catch (err) { res.status(500).json({ error: 'Erreur messages' }); }
 });
+
+app.post('/api/appointments', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    const { pharmacy_id, appointment_date, reason } = req.body;
+    const { data, error } = await supabase.from('appointments').insert([{ pharmacy_id, patient_id: req.user.id, appointment_date, reason, status: 'pending' }]).select().single();
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) { res.status(500).json({ error: 'Erreur création rdv' }); }
+});
+
+app.get('/api/appointments', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    let q = supabase.from('appointments').select('*, pharmacies(name, address)');
+    if (req.user.role === 'patient') q = q.eq('patient_id', req.user.id);
+    else if (req.user.role === 'pharmacy_admin') q = q.eq('pharmacy_id', req.user.pharmacy_id);
+    const { data, error } = await q.order('appointment_date', { ascending: true });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: 'Erreur rdv' }); }
+});
+
+app.get('/api/pharmacies/on-duty', async (req: Request, res: Response) => {
+
+  try {
+
+    const { data, error } = await supabase
+
+      .from('pharmacies')
+
+      .select('*')
+
+      .eq('is_on_duty', true);
+
+    if (error) throw error;
+
+    res.json(data);
+
+  } catch (err) {
+
+    res.status(500).json({ error: 'Erreur pharmacies de garde' });
+
+  }
+
+});
+
+
 
 export default app;
