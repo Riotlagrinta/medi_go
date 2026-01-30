@@ -384,7 +384,10 @@ export default function Home() {
             >
               <LogOut className="w-4 h-4" /> Déconnexion
             </button>
-            <Link href="/profil" className="bg-emerald-50 text-emerald-600 px-5 py-2 rounded-full font-semibold hover:bg-emerald-100">
+            <Link 
+              href={user?.role === 'patient' ? '/profil' : '/dashboard'} 
+              className="bg-emerald-50 text-emerald-600 px-5 py-2 rounded-full font-semibold hover:bg-emerald-100"
+            >
                {user?.full_name || 'Mon Espace'}
             </Link>
           </div>

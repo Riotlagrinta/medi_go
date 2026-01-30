@@ -55,6 +55,13 @@ export default function Dashboard() {
         if (!response.ok) throw new Error('Invalid session');
         
         const userData = await response.json();
+        
+        // SÉCURITÉ : Si l'utilisateur est un patient, il n'a rien à faire ici
+        if (userData.role === 'patient') {
+          router.push('/');
+          return;
+        }
+
         setUser(userData);
         fetchData(userData);
       } catch (error) {

@@ -15,49 +15,28 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '10kb' }));
 
-// --- SCHEMAS ---
-const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-  full_name: z.string().min(2)
-});
-
 // --- ROUTES AUTH ---
 
-// 1. INSCRIPTION (PRO)
 app.post('/api/auth/register', async (req: Request, res: Response) => {
   try {
-    const { email, password, full_name } = registerSchema.parse(req.body);
+    const { email, password, full_name } = req.body;
     const password_hash = await bcrypt.hash(password, 10);
-
-    const { data, error } = await supabase
-      .from('users')
-      .insert([{ email, password_hash, full_name, role: 'patient' }])
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === '23505') return res.status(400).json({ error: 'Email déjà utilisé' });
-      throw error;
-    }
-
+    const { data, error } = await supabase.from('users').insert([{ email, password_hash, full_name, role: 'patient' }]).select().single();
+    if (error) throw error;
     const token = jwt.sign({ id: data.id, email: data.email, role: data.role }, JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, user: data });
   } catch (err: any) {
-    res.status(400).json({ error: err.message || 'Erreur inscription' });
+    res.status(400).json({ error: 'Erreur inscription ou email déjà utilisé' });
   }
 });
 
-// 2. CONNEXION (PRO)
 app.post('/api/auth/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     const { data: user, error } = await supabase.from('users').select('*').eq('email', email).single();
-
     if (error || !user || !(await bcrypt.compare(password, user.password_hash))) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
-
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role, pharmacy_id: user.pharmacy_id }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user });
   } catch (err) {
@@ -65,7 +44,6 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
   }
 });
 
-// 3. VÉRIFICATION DE SESSION (L'unique source de vérité)
 app.get('/api/auth/me', authenticateJWT, async (req: AuthRequest, res: Response) => {
   try {
     const { data: user, error } = await supabase.from('users').select('*').eq('id', req.user.id).single();
@@ -76,9 +54,58 @@ app.get('/api/auth/me', authenticateJWT, async (req: AuthRequest, res: Response)
   }
 });
 
-// --- AUTRES ROUTES ---
-// ... (Je garde tes autres routes comme search, reservations, etc.)
-app.get('/api/health', (req, res) => res.json({ status: 'OK' }));
+// --- BUSINESS ROUTES (RÉTABLIES) ---
 
-// Note: J'ai simplifié pour la clarté, mais toutes tes routes existantes sont préservées
+app.get('/api/search', async (req: Request, res: Response) => {
+  const { q, lat, lng, radius = 5000 } = req.query;
+  try {
+    const { data, error } = await supabase.rpc('search_pharmacies', {
+      search_query: `%${q || ''}%`,
+      user_lat: parseFloat(lat as string),
+      user_lng: parseFloat(lng as string),
+      radius_meters: parseInt(radius as string)
+    });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur recherche' });
+  }
+});
+
+app.get('/api/pharmacies/:id/stocks', async (req: Request, res: Response) => {
+  try {
+    const { data, error } = await supabase.from('stocks').select(`id, quantity, price, medications (id, name, category)`).eq('pharmacy_id', req.params.id);
+    if (error) throw error;
+    res.json(data.map((s: any) => ({ stock_id: s.id, medication_id: s.medications.id, name: s.medications.name, price: s.price, category: s.medications.category, quantity: s.quantity })));
+  } catch (err) { res.status(500).json({ error: 'Erreur stocks' }); }
+});
+
+app.get('/api/reservations', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    let q = supabase.from('reservations').select('id, quantity, status, created_at, pharmacies (name, address), medications (name, price)');
+    if (req.user.role === 'patient') q = q.eq('patient_id', req.user.id);
+    else if (req.user.role === 'pharmacy_admin') q = q.eq('pharmacy_id', req.user.pharmacy_id);
+    const { data, error } = await q.order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json(data.map((r: any) => ({ id: r.id, quantity: r.quantity, status: r.status, created_at: r.created_at, pharmacy_name: r.pharmacies.name, medication_name: r.medications.name, price: r.medications.price })));
+  } catch (err) { res.status(500).json({ error: 'Erreur reservations' }); }
+});
+
+app.post('/api/messages', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    const { pharmacy_id, content, is_from_pharmacy } = req.body;
+    const { data, error } = await supabase.from('messages').insert([{ pharmacy_id, sender_id: req.user.id, content, is_from_pharmacy }]).select().single();
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) { res.status(500).json({ error: 'Erreur message' }); }
+});
+
+app.get('/api/messages/:pharmacyId', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    const { data, error } = await supabase.from('messages').select('*, users(full_name)').eq('pharmacy_id', req.params.pharmacyId).order('created_at', { ascending: true });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: 'Erreur messages' }); }
+});
+
 export default app;

@@ -34,7 +34,12 @@ export default function Connexion() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       
-      router.push('/dashboard');
+      // REDIRECTION INTELLIGENTE BASÉE SUR LE RÔLE
+      if (data.user.role === 'pharmacy_admin' || data.user.role === 'super_admin') {
+        router.push('/dashboard');
+      } else {
+        router.push('/');
+      }
     } catch (err: unknown) {
       console.error('Login error detail:', err);
       if (err instanceof Error) {
