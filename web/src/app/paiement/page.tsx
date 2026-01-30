@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, CreditCard, Smartphone, CheckCircle2, Loader2, ShieldCheck, Pill, Lock, Info } from 'lucide-react';
+import { ArrowLeft, CreditCard, Smartphone, CheckCircle2, Loader2, ShieldCheck, Pill, Lock, Info, Truck } from 'lucide-react';
 import Link from 'next/link';
 
 interface OrderItem {
@@ -11,12 +11,13 @@ interface OrderItem {
 }
 
 export default function Paiement() {
-  const [method, setMethod] = useState<'tmoney' | 'flooz' | 'card' | null>(null);
+  const [method, setMethod] = useState<'tmoney' | 'flooz' | 'delivery' | 'card' | null>(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // 1: Method, 2: Details, 3: Success
   const [phoneNumber, setPhoneNumber] = useState('');
   const [orderSummary, setOrderSummary] = useState<OrderItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const initOrder = () => {
@@ -30,8 +31,21 @@ export default function Paiement() {
     initOrder();
   }, []);
 
+  const validateTogoNumber = (num: string) => {
+    // Togo numbers: 90, 91, 92, 93 (Togocom) or 96, 97, 98, 99, 70 (Moov) + 6 digits
+    const regex = /^(90|91|92|93|96|97|98|99|70)\d{6}$/;
+    return regex.test(num.replace(/\s/g, ''));
+  };
+
   const handlePayment = (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    if ((method === 'tmoney' || method === 'flooz') && !validateTogoNumber(phoneNumber)) {
+      setError('Veuillez entrer un numéro de téléphone togolais valide (8 chiffres).');
+      return;
+    }
+
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
@@ -46,9 +60,11 @@ export default function Paiement() {
           <CheckCircle2 className="w-20 h-20 text-emerald-600 relative z-10" />
           <div className="absolute inset-0 bg-emerald-400 rounded-full animate-ping opacity-20"></div>
         </div>
-        <h1 className="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight">Paiement Réussi !</h1>
+        <h1 className="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight">Commande Validée !</h1>
         <p className="text-slate-500 max-w-md mb-10 text-lg leading-relaxed">
-          Votre commande est en cours de préparation. Vous recevrez un SMS avec votre code de retrait unique dès qu&apos;elle sera prête.
+          {method === 'delivery' 
+            ? "Votre commande est enregistrée. Vous paierez directement au livreur lors de la réception."
+            : "Votre paiement a été reçu. Vous recevrez un SMS avec votre code de retrait unique dès que votre commande sera prête."}
         </p>
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <Link href="/commandes" className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95">
@@ -90,45 +106,71 @@ export default function Paiement() {
                 </div>
                 
                 <div className="space-y-4">
-                  <button onClick={() => { setMethod('tmoney'); setStep(2); }} className="w-full flex items-center justify-between p-6 rounded-[24px] border-2 border-slate-50 hover:border-emerald-500 hover:bg-emerald-50/30 transition-all group">
+                  <button onClick={() => { setMethod('tmoney'); setStep(2); }} className="w-full flex items-center justify-between p-6 rounded-[24px] border-2 border-slate-50 hover:border-emerald-500 hover:bg-emerald-50/30 transition-all group text-left">
                     <div className="flex items-center gap-4">
-                      <div className="bg-yellow-400 w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-2xl italic">T</div>
-                      <div className="text-left">
-                        <p className="font-bold text-slate-800 text-lg">T-Money</p>
-                        <p className="text-xs text-slate-400">Togocom • Instantané</p>
+                      <div className="bg-yellow-400 w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-2xl italic shadow-lg shadow-yellow-100">T</div>
+                      <div>
+                        <p className="font-bold text-slate-800 text-lg leading-tight">T-Money</p>
+                        <p className="text-xs text-slate-400 mt-1">Togocom • Frais 0F</p>
                       </div>
                     </div>
-                    <Smartphone className="text-slate-200 group-hover:text-emerald-500 w-8 h-8" />
+                    <Smartphone className="text-slate-200 group-hover:text-emerald-500 w-8 h-8 transition-colors" />
                   </button>
 
-                  <button onClick={() => { setMethod('flooz'); setStep(2); }} className="w-full flex items-center justify-between p-6 rounded-[24px] border-2 border-slate-50 hover:border-emerald-500 hover:bg-emerald-50/30 transition-all group">
+                  <button onClick={() => { setMethod('flooz'); setStep(2); }} className="w-full flex items-center justify-between p-6 rounded-[24px] border-2 border-slate-50 hover:border-emerald-500 hover:bg-emerald-50/30 transition-all group text-left">
                     <div className="flex items-center gap-4">
-                      <div className="bg-slate-900 w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-2xl italic">F</div>
-                      <div className="text-left">
-                        <p className="font-bold text-slate-800 text-lg">Moov Money (Flooz)</p>
-                        <p className="text-xs text-slate-400">Moov • Instantané</p>
+                      <div className="bg-slate-900 w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-2xl italic shadow-lg shadow-slate-200">F</div>
+                      <div>
+                        <p className="font-bold text-slate-800 text-lg leading-tight">Flooz</p>
+                        <p className="text-xs text-slate-400 mt-1">Moov Money • Instantané</p>
                       </div>
                     </div>
-                    <Smartphone className="text-slate-200 group-hover:text-emerald-600 w-8 h-8" />
+                    <Smartphone className="text-slate-200 group-hover:text-emerald-600 w-8 h-8 transition-colors" />
                   </button>
 
-                  <button onClick={() => { setMethod('card'); setStep(2); }} className="w-full flex items-center justify-between p-6 rounded-[24px] border-2 border-slate-50 hover:border-emerald-500 hover:bg-emerald-50/30 transition-all group">
+                  <button onClick={() => { setMethod('delivery'); setStep(2); }} className="w-full flex items-center justify-between p-6 rounded-[24px] border-2 border-slate-50 hover:border-emerald-500 hover:bg-emerald-50/30 transition-all group text-left">
                     <div className="flex items-center gap-4">
-                      <div className="bg-blue-600 w-14 h-14 rounded-2xl flex items-center justify-center text-white">
+                      <div className="bg-emerald-600 w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-100">
+                        <Truck className="w-7 h-7" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800 text-lg leading-tight">Paiement à la livraison</p>
+                        <p className="text-xs text-slate-400 mt-1">Cash ou Mobile Money</p>
+                      </div>
+                    </div>
+                    <CheckCircle2 className="text-slate-200 group-hover:text-emerald-500 w-8 h-8 transition-colors" />
+                  </button>
+
+                  <div className="relative py-4 text-center">
+                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
+                    <span className="relative bg-white px-4 text-[10px] text-slate-400 uppercase font-black tracking-widest">Autres options</span>
+                  </div>
+
+                  <button onClick={() => { setMethod('card'); setStep(2); }} className="w-full flex items-center justify-between p-6 rounded-[24px] border-2 border-slate-50 hover:border-emerald-500 hover:bg-emerald-50/30 transition-all group text-left">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-blue-600 w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-100">
                         <CreditCard className="w-7 h-7" />
                       </div>
-                      <div className="text-left">
-                        <p className="font-bold text-slate-800 text-lg">Carte Bancaire</p>
-                        <p className="text-xs text-slate-400">International</p>
+                      <div>
+                        <p className="font-bold text-slate-800 text-lg leading-tight">Carte Bancaire</p>
+                        <p className="text-xs text-slate-400 mt-1">Visa, Mastercard</p>
                       </div>
                     </div>
-                    <CreditCard className="text-slate-200 group-hover:text-emerald-500 w-8 h-8" />
+                    <CreditCard className="text-slate-200 group-hover:text-emerald-500 w-8 h-8 transition-colors" />
                   </button>
                 </div>
               </div>
             ) : (
               <form onSubmit={handlePayment} className="p-6 md:p-10 animate-in fade-in slide-in-from-right-4 duration-300">
-                <h2 className="text-2xl font-black text-slate-800 mb-8 tracking-tight">Coordonnées</h2>
+                <div className="mb-8 flex items-center justify-between">
+                  <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+                    {method === 'delivery' ? 'Confirmation' : 'Coordonnées'}
+                  </h2>
+                  <div className="bg-emerald-50 px-3 py-1 rounded-full text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+                    Étape 2/2
+                  </div>
+                </div>
+
                 {method === 'card' ? (
                   <div className="space-y-4">
                     <input type="text" placeholder="Numéro de carte" className="w-full bg-slate-50 border-none rounded-2xl py-4 px-6 outline-none focus:ring-2 focus:ring-emerald-500 font-mono" />
@@ -137,18 +179,38 @@ export default function Paiement() {
                       <input type="text" placeholder="CVC" className="flex-1 bg-slate-50 border-none rounded-2xl py-4 px-6 outline-none focus:ring-2 focus:ring-emerald-500 font-mono" />
                     </div>
                   </div>
+                ) : method === 'delivery' ? (
+                  <div className="bg-slate-50 p-6 rounded-3xl space-y-4">
+                    <div className="flex gap-4 items-start">
+                      <div className="bg-emerald-100 p-2 rounded-lg"><Truck className="text-emerald-600 w-5 h-5" /></div>
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        Un livreur MediGo se présentera à votre adresse dans les prochaines **45 minutes**. Assurez-vous d&apos;avoir le montant exact de **{total.toLocaleString()} F** ou d&apos;être prêt à faire un transfert mobile.
+                      </p>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-4">
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Numéro Mobile</label>
-                    <input type="tel" required placeholder="90 00 00 00" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="w-full bg-slate-50 border-none rounded-2xl py-5 px-6 outline-none focus:ring-2 focus:ring-emerald-500 text-xl font-bold tracking-[0.2em]" />
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Numéro Mobile Togo</label>
+                    <div className="relative">
+                      <Smartphone className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                      <input 
+                        type="tel" required 
+                        placeholder="90 00 00 00" 
+                        value={phoneNumber} 
+                        onChange={(e) => setPhoneNumber(e.target.value)} 
+                        className="w-full bg-slate-50 border-none rounded-2xl py-5 pl-14 pr-6 outline-none focus:ring-2 focus:ring-emerald-500 text-xl font-bold tracking-[0.2em]" 
+                      />
+                    </div>
+                    {error && <p className="text-red-500 text-xs font-bold pl-1">{error}</p>}
                     <div className="bg-blue-50 p-4 rounded-2xl flex gap-3 border border-blue-100">
                       <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-xs text-blue-700 leading-relaxed">Confirmation PIN requise sur votre mobile.</p>
+                      <p className="text-xs text-blue-700 leading-relaxed font-medium">Vous recevrez une demande de confirmation PIN sur votre téléphone.</p>
                     </div>
                   </div>
                 )}
-                <button disabled={loading} className="w-full bg-emerald-600 text-white py-5 rounded-[24px] font-black text-lg hover:bg-emerald-700 active:scale-95 transition-all mt-10 shadow-xl shadow-emerald-100">
-                  {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Confirmer le paiement"}
+
+                <button disabled={loading} className="w-full bg-slate-900 text-white py-5 rounded-[24px] font-black text-lg hover:bg-slate-800 active:scale-95 transition-all mt-10 shadow-xl shadow-slate-200">
+                  {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (method === 'delivery' ? "Confirmer la commande" : "Lancer le paiement")}
                 </button>
               </form>
             )}
@@ -171,7 +233,7 @@ export default function Paiement() {
             </div>
             <div className="pt-6 border-t border-slate-100">
               <div className="flex justify-between items-center">
-                <span className="font-black text-slate-800 text-lg">Total</span>
+                <span className="font-black text-slate-800 text-lg">Total à payer</span>
                 <span className="font-black text-emerald-600 text-2xl">{total.toLocaleString()} F</span>
               </div>
             </div>
