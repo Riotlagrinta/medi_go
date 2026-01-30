@@ -26,6 +26,7 @@ interface Pharmacy {
   address: string;
   phone: string;
   is_on_duty: boolean;
+  is_verified: boolean;
   lat: number;
   lng: number;
 }

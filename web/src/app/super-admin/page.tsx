@@ -10,6 +10,7 @@ interface Pharmacy {
   address: string;
   phone: string;
   is_on_duty: boolean;
+  is_verified: boolean;
 }
 
 export default function SuperAdmin() {
@@ -17,6 +18,16 @@ export default function SuperAdmin() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newPharmacy, setNewPharmacy] = useState({ name: '', address: '', phone: '', email: '' });
   const [isAuthorized, setIsAuthorized] = useState(false);
+
+  const fetchPharmacies = async () => {
+    try {
+      const { data, error } = await supabase.from('pharmacies').select('*').order('name');
+      if (error) throw error;
+      setPharmacies((data as Pharmacy[]) || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     const checkAuth = () => {
@@ -54,8 +65,6 @@ export default function SuperAdmin() {
     } catch (err) { alert("Erreur suppression"); }
   };
 
-  if (!isAuthorized) return null;
-
   const handleAddPharmacy = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -65,7 +74,7 @@ export default function SuperAdmin() {
         .select();
 
       if (error) throw error;
-      alert(`Pharmacie créée ! Invitation envoyée.`);
+      alert(`Pharmacie créée !`);
       setShowAddForm(false);
       setNewPharmacy({ name: '', address: '', phone: '', email: '' });
       fetchPharmacies();
@@ -74,9 +83,10 @@ export default function SuperAdmin() {
     }
   };
 
+  if (!isAuthorized) return null;
+
   return (
     <main className="min-h-screen bg-slate-950 text-white pb-20">
-      {/* Dynamic Header */}
       <div className="bg-slate-900/50 backdrop-blur-xl border-b border-white/5 sticky top-0 z-30 px-4 py-6">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -98,7 +108,6 @@ export default function SuperAdmin() {
       </div>
 
       <div className="max-w-6xl mx-auto p-4 md:p-8">
-        {/* Stats Quick View */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
           <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Réseau</p>
@@ -134,15 +143,6 @@ export default function SuperAdmin() {
                 <div className="bg-slate-800 p-3 rounded-2xl group-hover:bg-emerald-500 transition-colors">
                   <Pill className="text-emerald-500 group-hover:text-slate-900 w-6 h-6 transition-colors" />
                 </div>
-interface Pharmacy {
-  id: number;
-  name: string;
-  address: string;
-  phone: string;
-  is_on_duty: boolean;
-  is_verified: boolean;
-}
-// ...
                 <button 
                   onClick={() => deletePharmacy(p.id)}
                   className="p-2 text-slate-600 hover:text-red-500 active:scale-90 transition-all"

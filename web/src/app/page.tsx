@@ -12,6 +12,7 @@ interface SearchResult {
   address: string;
   phone: string;
   is_on_duty: boolean;
+  is_verified: boolean;
   medication_id: number;
   medication_name: string;
   price: string;
