@@ -438,21 +438,29 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CARTE INTERACTIVE - VISIBLE SI CONNECTÉ */}
+      {/* CARTE INTERACTIVE - COMPACTE */}
       {user && (
         <section className="max-w-7xl mx-auto px-4 -mt-4 mb-8">
-          <div className="bg-white p-2 rounded-[36px] shadow-xl border border-slate-100">
-            <PharmacyMap 
-              pharmacies={(results.length > 0 ? results : nearbyPharmacies).map((p: any) => ({
-                id: p.pharmacy_id || p.id,
-                name: p.pharmacy_name || p.name,
-                address: p.address,
-                phone: p.phone,
-                is_on_duty: p.is_on_duty,
-                lat: p.lat || 6.1372,
-                lng: p.lng || 1.2255
-              }))} 
-            />
+          <div className="bg-white p-1 rounded-[32px] shadow-lg border border-slate-100 overflow-hidden">
+            <div className="h-[250px] transition-all duration-500 hover:h-[400px]">
+              <PharmacyMap 
+                pharmacies={(results.length > 0 ? results : nearbyPharmacies).map((p: any) => ({
+                  id: p.pharmacy_id || p.id,
+                  name: p.pharmacy_name || p.name,
+                  address: p.address,
+                  phone: p.phone,
+                  is_on_duty: p.is_on_duty,
+                  is_verified: p.is_verified,
+                  lat: p.lat || 6.1372,
+                  lng: p.lng || 1.2255
+                }))} 
+              />
+            </div>
+            <div className="bg-slate-50 py-2 text-center">
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">
+                <MapPin className="w-3 h-3" /> Survolez ou cliquez pour agrandir la vue
+              </p>
+            </div>
           </div>
         </section>
       )}

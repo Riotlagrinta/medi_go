@@ -34,7 +34,7 @@ export default function PharmacyMap({ pharmacies }: { pharmacies: Pharmacy[] }) 
   const center: [number, number] = [6.1372, 1.2255]; // Lomé center
 
   return (
-    <div className="h-[500px] w-full rounded-[32px] overflow-hidden shadow-2xl border-4 border-white relative group">
+    <div className="h-full w-full relative group">
       {/* Overlay style Google Maps */}
       <div className="absolute top-4 left-4 z-[1000] bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg border border-slate-100 flex items-center gap-2 pointer-events-none">
         <div className="bg-emerald-600 p-1.5 rounded-lg"><MapPin className="text-white w-3 h-3" /></div>
