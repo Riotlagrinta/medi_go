@@ -56,8 +56,8 @@ export default function Dashboard() {
         
         const userData = await response.json();
         
-        // SÉCURITÉ : Si l'utilisateur est un patient, il n'a rien à faire ici
-        if (userData.role === 'patient') {
+        // SÉCURITÉ : Seuls les admins et super_admins peuvent entrer
+        if (userData.role !== 'pharmacy_admin' && userData.role !== 'super_admin') {
           router.push('/');
           return;
         }

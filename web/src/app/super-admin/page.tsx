@@ -88,26 +88,34 @@ export default function SuperAdmin() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white pb-20">
-      <div className="bg-slate-900/50 backdrop-blur-xl border-b border-white/5 sticky top-0 z-30 px-4 py-6">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
+      <div className="bg-slate-900/50 backdrop-blur-xl border-b border-white/5 sticky top-0 z-30 px-4 py-4">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="bg-emerald-500 p-2 rounded-xl shadow-lg shadow-emerald-500/20">
               <ShieldCheck className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-black tracking-tight">MediGo Central</h1>
-              <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Administration Système</p>
+              <h1 className="text-xl font-black tracking-tight text-white">MediGo Central</h1>
+              <div className="flex gap-3 mt-1">
+                <Link href="/" className="text-[9px] font-bold text-slate-400 hover:text-emerald-500 uppercase tracking-widest transition-colors">Accueil</Link>
+                <Link href="/dashboard" className="text-[9px] font-bold text-slate-400 hover:text-emerald-500 uppercase tracking-widest transition-colors">Dashboard</Link>
+                <Link href="/profil" className="text-[9px] font-bold text-slate-400 hover:text-emerald-500 uppercase tracking-widest transition-colors">Profil</Link>
+              </div>
             </div>
           </div>
+          
           <div className="flex items-center gap-4">
-            <Link href="/" className="hidden md:block text-xs font-bold text-slate-400 hover:text-white transition-colors">
-              Voir le site public
-            </Link>
+            <button 
+              onClick={() => { localStorage.clear(); window.location.href = '/connexion'; }}
+              className="text-xs font-bold text-red-400 hover:text-red-300 transition-colors mr-4"
+            >
+              Déconnexion
+            </button>
             <button 
               onClick={() => setShowAddForm(!showAddForm)}
-              className="bg-white text-slate-950 p-3 rounded-xl shadow-lg active:scale-95 transition-all"
+              className="bg-white text-slate-950 px-4 py-2 rounded-xl shadow-lg active:scale-95 transition-all font-black text-sm flex items-center gap-2"
             >
-              <Plus className={`w-6 h-6 transition-transform ${showAddForm ? 'rotate-45' : ''}`} />
+              <Plus className={`w-4 h-4 transition-transform ${showAddForm ? 'rotate-45' : ''}`} /> Pharmacie
             </button>
           </div>
         </div>
