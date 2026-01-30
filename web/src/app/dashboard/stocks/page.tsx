@@ -145,11 +145,16 @@ export default function Stocks() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredStocks.map((item) => (
-            <div key={item.stock_id} className="bg-white p-5 rounded-[28px] shadow-sm border border-slate-100 flex flex-col justify-between group">
+            <div key={item.stock_id} className={`bg-white p-5 rounded-[28px] shadow-sm border ${item.quantity < 10 ? 'border-red-200 ring-2 ring-red-50' : 'border-slate-100'} flex flex-col justify-between group relative overflow-hidden`}>
+              {item.quantity < 10 && (
+                <div className="absolute top-0 right-0 bg-red-500 text-white text-[8px] font-black px-2 py-1 rounded-bl-xl uppercase tracking-tighter animate-pulse">
+                  Stock Faible
+                </div>
+              )}
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="bg-slate-50 p-3 rounded-2xl">
-                    <Package className="text-slate-400 w-6 h-6" />
+                  <div className={`p-3 rounded-2xl ${item.quantity < 10 ? 'bg-red-50' : 'bg-slate-50'}`}>
+                    <Package className={item.quantity < 10 ? 'text-red-500 w-6 h-6' : 'text-slate-400 w-6 h-6'} />
                   </div>
                   <div>
                     <h3 className="font-black text-slate-800 text-base leading-tight">{item.name}</h3>
@@ -160,7 +165,7 @@ export default function Stocks() {
               </div>
               <div className="flex items-center justify-between pt-4 border-t border-slate-50 mt-2">
                 <p className="text-xl font-black text-slate-900">{parseFloat(item.price).toLocaleString()} F</p>
-                <span className={`text-sm font-black px-2 py-1 rounded-lg ${item.quantity < 20 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>{item.quantity} units</span>
+                <span className={`text-sm font-black px-2 py-1 rounded-lg ${item.quantity < 10 ? 'bg-red-100 text-red-700 animate-bounce' : item.quantity < 20 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>{item.quantity} units</span>
               </div>
             </div>
           ))}
