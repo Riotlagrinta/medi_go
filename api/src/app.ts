@@ -15,71 +15,43 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '10kb' }));
 
-// --- ROUTES AUTH ---
-
-app.get('/api/pharmacies/:id/prescriptions', authenticateJWT, async (req: AuthRequest, res: Response) => {
-  try {
-    const { data, error } = await supabase.from('prescriptions').select('*, users(full_name, email)').eq('pharmacy_id', req.params.id).order('created_at', { ascending: false });
-    if (error) throw error;
-    res.json(data);
-  } catch (err) { res.status(500).json({ error: 'Erreur ordonnances' }); }
+// Security: Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 300, 
+  message: { error: 'Trop de requêtes, veuillez réessayer plus tard.' }
 });
 
-app.post('/api/prescriptions', authenticateJWT, async (req: AuthRequest, res: Response) => {
-  try {
-    const { pharmacy_id, image_url } = req.body;
-    const { data, error } = await supabase.from('prescriptions').insert([{ patient_id: req.user.id, pharmacy_id, image_url, status: 'pending' }]).select().single();
-    if (error) throw error;
-    res.status(201).json(data);
-  } catch (err) { res.status(500).json({ error: 'Erreur sauvegarde ordonnance' }); }
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  message: { error: 'Trop de tentatives, réessayez dans une heure.' }
 });
 
-app.post('/api/stocks', authenticateJWT, async (req: AuthRequest, res: Response) => {
-  try {
-    const { pharmacy_id, medication_id, quantity, price } = req.body;
-    const { data, error } = await supabase.from('stocks').insert([{ pharmacy_id, medication_id, quantity, price }]).select().single();
-    if (error) throw error;
-    res.status(201).json(data);
-  } catch (err) { res.status(500).json({ error: 'Erreur ajout stock' }); }
+app.use('/api/', limiter);
+app.use('/api/auth/', authLimiter);
+
+// --- SCHEMAS DE VALIDATION ZOD ---
+const stockSchema = z.object({
+  pharmacy_id: z.number().positive(),
+  medication_id: z.number().positive(),
+  quantity: z.number().min(0),
+  price: z.number().positive()
 });
 
-app.delete('/api/stocks/:id', authenticateJWT, async (req: AuthRequest, res: Response) => {
-  try {
-    const { error } = await supabase.from('stocks').delete().eq('id', req.params.id);
-    if (error) throw error;
-    res.json({ message: 'Supprimé' });
-  } catch (err) { res.status(500).json({ error: 'Erreur suppression stock' }); }
+const reservationSchema = z.object({
+  pharmacy_id: z.number().positive(),
+  medication_id: z.number().positive(),
+  quantity: z.number().min(1)
 });
 
-app.get('/api/medications', async (req: Request, res: Response) => {
-  try {
-    const { data, error } = await supabase.from('medications').select('*');
-    if (error) throw error;
-    res.json(data);
-  } catch (err) { res.status(500).json({ error: 'Erreur medications' }); }
+const appointmentSchema = z.object({
+  pharmacy_id: z.number().positive(),
+  appointment_date: z.string(),
+  reason: z.string().min(3)
 });
 
-app.patch('/api/prescriptions/:id', authenticateJWT, async (req: AuthRequest, res: Response) => {
-  try {
-    const { data, error } = await supabase.from('prescriptions').update({ status: req.body.status }).eq('id', req.params.id).select().single();
-    if (error) throw error;
-    res.json(data);
-  } catch (err) { res.status(500).json({ error: 'Erreur mise à jour ordonnance' }); }
-});
-
-app.get('/api/pharmacies/nearby', async (req: Request, res: Response) => {
-  const { lat, lng, radius = 10000 } = req.query;
-  try {
-    const { data, error } = await supabase.rpc('search_pharmacies', {
-      search_query: '%%',
-      user_lat: parseFloat(lat as string),
-      user_lng: parseFloat(lng as string),
-      radius_meters: parseInt(radius as string)
-    });
-    if (error) throw error;
-    res.json(data);
-  } catch (err) { res.status(500).json({ error: 'Erreur pharmacies à proximité' }); }
-});
+// --- ROUTES AUTHENTIFICATION ---
 
 app.post('/api/auth/register', async (req: Request, res: Response) => {
   try {
@@ -118,25 +90,39 @@ app.get('/api/auth/me', authenticateJWT, async (req: AuthRequest, res: Response)
   }
 });
 
-// --- BUSINESS ROUTES (RÉTABLIES) ---
+app.post('/api/auth/sync-profile', async (req: Request, res: Response) => {
+  const { email, full_name, phone, address, medical_info, role, pharmacy_id } = req.body;
+  try {
+    const { data, error } = await supabase.from('users').upsert({ email, full_name, phone, address, medical_info, role, pharmacy_id }, { onConflict: 'email' }).select().single();
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur synchronisation' });
+  }
+});
 
-app.get('/api/search', async (req: Request, res: Response) => {
-  const { q, lat, lng, radius = 5000 } = req.query;
+// --- ROUTES PHARMACIES & STOCKS ---
+
+app.get('/api/pharmacies/on-duty', async (req: Request, res: Response) => {
+  try {
+    const { data, error } = await supabase.from('pharmacies').select('*').eq('is_on_duty', true);
+    if (error) throw error;
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: 'Erreur pharmacies de garde' }); }
+});
+
+app.get('/api/pharmacies/nearby', async (req: Request, res: Response) => {
+  const { lat, lng, radius = 10000 } = req.query;
   try {
     const { data, error } = await supabase.rpc('search_pharmacies', {
-      search_query: `%${q || ''}%`,
+      search_query: '%%',
       user_lat: parseFloat(lat as string),
       user_lng: parseFloat(lng as string),
       radius_meters: parseInt(radius as string)
     });
-    
-    // Formatter pour inclure lat/lng si présents (PostGIS renvoie des objets géographiques)
-    // Note: Dans notre fonction RPC search_pharmacies, nous devrions aussi extraire lat/lng
     if (error) throw error;
     res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur recherche' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Erreur à proximité' }); }
 });
 
 app.get('/api/pharmacies/:id/stocks', async (req: Request, res: Response) => {
@@ -147,6 +133,23 @@ app.get('/api/pharmacies/:id/stocks', async (req: Request, res: Response) => {
   } catch (err) { res.status(500).json({ error: 'Erreur stocks' }); }
 });
 
+app.post('/api/stocks', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    const { pharmacy_id, medication_id, quantity, price } = stockSchema.parse(req.body);
+    if (req.user.role !== 'super_admin' && req.user.pharmacy_id !== pharmacy_id) {
+      return res.status(403).json({ error: 'Accès refusé' });
+    }
+    const { data, error } = await supabase.from('stocks').insert([{ pharmacy_id, medication_id, quantity, price }]).select().single();
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err: any) {
+    if (err instanceof z.ZodError) return res.status(400).json({ error: err.issues[0]?.message });
+    res.status(500).json({ error: 'Erreur ajout stock' });
+  }
+});
+
+// --- ROUTES RÉSERVATIONS & RDV ---
+
 app.get('/api/reservations', authenticateJWT, async (req: AuthRequest, res: Response) => {
   try {
     let q = supabase.from('reservations').select('id, quantity, status, created_at, pharmacies (name, address), medications (name, price)');
@@ -155,7 +158,58 @@ app.get('/api/reservations', authenticateJWT, async (req: AuthRequest, res: Resp
     const { data, error } = await q.order('created_at', { ascending: false });
     if (error) throw error;
     res.json(data.map((r: any) => ({ id: r.id, quantity: r.quantity, status: r.status, created_at: r.created_at, pharmacy_name: r.pharmacies.name, medication_name: r.medications.name, price: r.medications.price })));
-  } catch (err) { res.status(500).json({ error: 'Erreur reservations' }); }
+  } catch (err) { res.status(500).json({ error: 'Erreur réservations' }); }
+});
+
+app.post('/api/reservations', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    const { pharmacy_id, medication_id, quantity } = reservationSchema.parse(req.body);
+    const { data, error } = await supabase.from('reservations').insert([{ pharmacy_id, medication_id, quantity, patient_id: req.user.id, status: 'pending' }]).select();
+    if (error) throw error;
+    res.status(201).json(data[0]);
+  } catch (err: any) {
+    if (err instanceof z.ZodError) return res.status(400).json({ error: err.issues[0]?.message });
+    res.status(500).json({ error: 'Erreur réservation' });
+  }
+});
+
+app.post('/api/appointments', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    const { pharmacy_id, appointment_date, reason } = appointmentSchema.parse(req.body);
+    const { data, error } = await supabase.from('appointments').insert([{ pharmacy_id, patient_id: req.user.id, appointment_date, reason, status: 'pending' }]).select().single();
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err: any) {
+    if (err instanceof z.ZodError) return res.status(400).json({ error: err.issues[0]?.message });
+    res.status(500).json({ error: 'Erreur RDV' });
+  }
+});
+
+app.get('/api/appointments', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    let q = supabase.from('appointments').select('*, pharmacies(name, address)');
+    if (req.user.role === 'patient') q = q.eq('patient_id', req.user.id);
+    else if (req.user.role === 'pharmacy_admin') q = q.eq('pharmacy_id', req.user.pharmacy_id);
+    const { data, error } = await q.order('appointment_date', { ascending: true });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: 'Erreur récup RDV' }); }
+});
+
+// --- MESSAGERIE & RECHERCHE GLOBALE ---
+
+app.get('/api/search', async (req: Request, res: Response) => {
+  const { q, lat, lng, radius = 5000 } = req.query;
+  try {
+    const { data, error } = await supabase.rpc('search_pharmacies', {
+      search_query: `%${q || ''}%`,
+      user_lat: parseFloat(lat as string),
+      user_lng: parseFloat(lng as string),
+      radius_meters: parseInt(radius as string)
+    });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: 'Erreur recherche' }); }
 });
 
 app.post('/api/messages', authenticateJWT, async (req: AuthRequest, res: Response) => {
@@ -174,51 +228,5 @@ app.get('/api/messages/:pharmacyId', authenticateJWT, async (req: AuthRequest, r
     res.json(data);
   } catch (err) { res.status(500).json({ error: 'Erreur messages' }); }
 });
-
-app.post('/api/appointments', authenticateJWT, async (req: AuthRequest, res: Response) => {
-  try {
-    const { pharmacy_id, appointment_date, reason } = req.body;
-    const { data, error } = await supabase.from('appointments').insert([{ pharmacy_id, patient_id: req.user.id, appointment_date, reason, status: 'pending' }]).select().single();
-    if (error) throw error;
-    res.status(201).json(data);
-  } catch (err) { res.status(500).json({ error: 'Erreur création rdv' }); }
-});
-
-app.get('/api/appointments', authenticateJWT, async (req: AuthRequest, res: Response) => {
-  try {
-    let q = supabase.from('appointments').select('*, pharmacies(name, address)');
-    if (req.user.role === 'patient') q = q.eq('patient_id', req.user.id);
-    else if (req.user.role === 'pharmacy_admin') q = q.eq('pharmacy_id', req.user.pharmacy_id);
-    const { data, error } = await q.order('appointment_date', { ascending: true });
-    if (error) throw error;
-    res.json(data);
-  } catch (err) { res.status(500).json({ error: 'Erreur rdv' }); }
-});
-
-app.get('/api/pharmacies/on-duty', async (req: Request, res: Response) => {
-
-  try {
-
-    const { data, error } = await supabase
-
-      .from('pharmacies')
-
-      .select('*')
-
-      .eq('is_on_duty', true);
-
-    if (error) throw error;
-
-    res.json(data);
-
-  } catch (err) {
-
-    res.status(500).json({ error: 'Erreur pharmacies de garde' });
-
-  }
-
-});
-
-
 
 export default app;
