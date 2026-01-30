@@ -146,10 +146,9 @@ import { PharmacyMap } from '@/components/Map';
 
 // Composant Principal (Dashboard)
 export default function Home() {
-  // ... (existing states)
-
-
-  // Vérification de la session au chargement
+  const router = useRouter();
+  const [authLoading, setAuthLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
   useEffect(() => {
     const checkSession = async () => {
       const token = localStorage.getItem('token');
@@ -443,7 +442,17 @@ export default function Home() {
       {user && (
         <section className="max-w-7xl mx-auto px-4 -mt-4 mb-8">
           <div className="bg-white p-2 rounded-[36px] shadow-xl border border-slate-100">
-            <PharmacyMap pharmacies={results.length > 0 ? results : nearbyPharmacies} />
+            <PharmacyMap 
+              pharmacies={(results.length > 0 ? results : nearbyPharmacies).map((p: any) => ({
+                id: p.pharmacy_id || p.id,
+                name: p.pharmacy_name || p.name,
+                address: p.address,
+                phone: p.phone,
+                is_on_duty: p.is_on_duty,
+                lat: p.lat || 6.1372,
+                lng: p.lng || 1.2255
+              }))} 
+            />
           </div>
         </section>
       )}
