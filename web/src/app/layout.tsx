@@ -16,13 +16,19 @@ export const metadata: Metadata = {
   title: "MediGo - Votre santé au Togo",
   description: "ERP Pharmaceutique - Recherche de médicaments et pharmacies de garde",
   manifest: "/manifest.json",
-  themeColor: "#059669",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "MediGo",
   },
+};
+
+export const viewport = {
+  themeColor: "#059669",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
