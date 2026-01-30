@@ -465,7 +465,10 @@ export default function Home() {
               <div key={idx} className="bg-white p-5 md:p-6 rounded-[28px] md:rounded-3xl shadow-sm border border-slate-100 flex flex-col">
                 <div className="flex justify-between items-start mb-4">
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-base md:text-lg text-slate-800 truncate">{res.pharmacy_name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-base md:text-lg text-slate-800 truncate">{res.pharmacy_name}</h3>
+                      {res.is_verified && <ShieldCheck className="w-4 h-4 text-blue-500 fill-blue-50 flex-shrink-0" />}
+                    </div>
                     <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{(res.distance / 1000).toFixed(1)} km - {res.address}</span></p>
                   </div>
                   {res.is_on_duty && <span className="bg-red-100 text-red-600 text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-full uppercase flex-shrink-0 ml-2">De Garde</span>}

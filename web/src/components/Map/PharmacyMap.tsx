@@ -3,7 +3,7 @@
 import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { MapPin, Phone, Clock } from 'lucide-react';
+import { MapPin, Phone, Clock, ShieldCheck } from 'lucide-react';
 
 // Fix for default marker icons in Next.js
 const DefaultIcon = L.icon({
@@ -56,7 +56,10 @@ export default function PharmacyMap({ pharmacies }: { pharmacies: Pharmacy[] }) 
           >
             <Popup>
               <div className="p-2 min-w-[150px]">
-                <h3 className="font-black text-slate-800 text-sm mb-1">{p.name}</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-black text-slate-800 text-sm">{p.name}</h3>
+                  {p.is_verified && <ShieldCheck className="w-3.5 h-3.5 text-blue-500 fill-blue-50" />}
+                </div>
                 <p className="text-[10px] text-slate-500 mb-2 flex items-center gap-1">
                   <MapPin className="w-3 h-3" /> {p.address}
                 </p>
