@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Pill, Heart, Shield, Users, Mail, Phone, MapPin, Send, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Pill, Heart, Shield, Users, Mail, Phone, MapPin, Send, ArrowLeft, CheckCircle2, Activity, Database, Smartphone } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AboutPage() {
@@ -10,7 +10,6 @@ export default function AboutPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulation d'envoi
     setSent(true);
     setTimeout(() => setSent(false), 5000);
     setFormData({ name: '', email: '', message: '' });
@@ -22,104 +21,105 @@ export default function AboutPage() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="bg-emerald-600 p-2 rounded-lg"><Pill className="text-white w-6 h-6" /></div>
-            <span className="text-2xl font-bold text-slate-800">MediGo</span>
+            <div className="bg-emerald-600 p-2 rounded-lg"><Activity className="text-white w-6 h-6" /></div>
+            <span className="text-2xl font-bold text-slate-800">MediGo<span className="text-emerald-600">Health</span></span>
           </Link>
           <Link href="/" className="text-sm font-bold text-emerald-600 flex items-center gap-1 hover:underline">
-            <ArrowLeft className="w-4 h-4" /> Retour à l'accueil
+            <ArrowLeft className="w-4 h-4" /> Retour au Dashboard
           </Link>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 bg-emerald-600 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500 rounded-full blur-[120px] opacity-50 -mr-48 -mt-48"></div>
+      <section className="py-24 bg-emerald-600 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500 rounded-full blur-[150px] opacity-30 -mr-64 -mt-64"></div>
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-          <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tight">Notre Mission : <br/><span className="text-emerald-200">Rapprocher la santé de vous.</span></h1>
-          <p className="text-xl opacity-90 leading-relaxed max-w-2xl mx-auto">
-            MediGo est née d'une vision simple : personne ne devrait avoir à parcourir toute la ville pour trouver un médicament vital.
+          <h1 className="text-5xl md:text-7xl font-black mb-8 tracking-tighter leading-none">
+            Digitaliser l'accès aux <span className="text-emerald-100">soins au Togo.</span>
+          </h1>
+          <p className="text-xl opacity-90 leading-relaxed max-w-2xl mx-auto font-medium">
+            MediGo est une plateforme intégrée conçue pour unifier patients, médecins et pharmacies au sein d'un écosystème de santé fluide et sécurisé.
           </p>
         </div>
       </section>
 
-      {/* Values Section */}
-      <section className="py-24 max-w-7xl mx-auto px-4">
-        <div className="grid md:grid-cols-3 gap-12">
-          <div className="space-y-4">
-            <div className="bg-blue-50 w-16 h-16 rounded-3xl flex items-center justify-center text-blue-600">
-              <Shield className="w-8 h-8" />
+      {/* Vision Section */}
+      <section className="py-32 max-w-7xl mx-auto px-4">
+        <div className="grid md:grid-cols-3 gap-16">
+          <div className="space-y-6">
+            <div className="bg-blue-600 w-16 h-16 rounded-[24px] flex items-center justify-center text-white shadow-xl shadow-blue-200">
+              <Database className="w-8 h-8" />
             </div>
-            <h3 className="text-2xl font-black">Sécurité Totale</h3>
-            <p className="text-slate-500 leading-relaxed">Nous garantissons la protection de vos données de santé et la fiabilité des informations fournies par nos pharmacies partenaires.</p>
+            <h3 className="text-3xl font-black tracking-tight">Réseau Pharmaceutique</h3>
+            <p className="text-slate-500 leading-relaxed text-lg">
+              Une base de données centralisée pour localiser les pharmacies de garde et vérifier la disponibilité des médicaments en temps réel.
+            </p>
           </div>
-          <div className="space-y-4">
-            <div className="bg-emerald-50 w-16 h-16 rounded-3xl flex items-center justify-center text-emerald-600">
-              <Users className="w-8 h-8" />
+          <div className="space-y-6">
+            <div className="bg-emerald-600 w-16 h-16 rounded-[24px] flex items-center justify-center text-white shadow-xl shadow-emerald-200">
+              <Smartphone className="w-8 h-8" />
             </div>
-            <h3 className="text-2xl font-black">Pour Tous</h3>
-            <p className="text-slate-500 leading-relaxed">Une interface pensée pour être simple, que vous soyez un patient pressé ou un pharmacien gérant ses stocks.</p>
+            <h3 className="text-3xl font-black tracking-tight">Expérience Patient</h3>
+            <p className="text-slate-500 leading-relaxed text-lg">
+              Une interface intuitive permettant de gérer ses tickets d'attente, ses ordonnances et ses constantes de santé depuis un mobile.
+            </p>
           </div>
-          <div className="space-y-4">
-            <div className="bg-amber-50 w-16 h-16 rounded-3xl flex items-center justify-center text-amber-600">
-              <Heart className="w-8 h-8" />
+          <div className="space-y-6">
+            <div className="bg-slate-900 w-16 h-16 rounded-[24px] flex items-center justify-center text-white shadow-xl shadow-slate-200">
+              <Activity className="w-8 h-8" />
             </div>
-            <h3 className="text-2xl font-black">Engagement Local</h3>
-            <p className="text-slate-500 leading-relaxed">Nous soutenons les pharmacies locales au Togo en digitalisant leurs services pour mieux servir la communauté.</p>
+            <h3 className="text-3xl font-black tracking-tight">Suivi Médical Pro</h3>
+            <p className="text-slate-500 leading-relaxed text-lg">
+              Des outils dédiés aux médecins pour optimiser les consultations, la télé-expertise et le suivi des patients.
+            </p>
           </div>
         </div>
       </section>
 
       {/* Contact Section */}
-      <section className="py-24 bg-slate-50 border-y border-slate-100">
+      <section className="py-32 bg-slate-50 border-y border-slate-100">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-24 items-center">
             <div>
-              <h2 className="text-4xl font-black mb-8 tracking-tight">Contactez-nous</h2>
-              <p className="text-lg text-slate-500 mb-10">Vous avez une question, une suggestion ou vous souhaitez devenir pharmacie partenaire ? Notre équipe est à votre écoute.</p>
+              <h2 className="text-5xl font-black mb-8 tracking-tighter">Contactez-nous</h2>
+              <p className="text-xl text-slate-500 mb-12 leading-relaxed">Vous êtes une pharmacie ou un centre de santé et souhaitez rejoindre le réseau MediGo ? Notre équipe est à votre disposition.</p>
               
-              <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="bg-white p-4 rounded-2xl shadow-sm"><Mail className="text-emerald-600" /></div>
+              <div className="space-y-8">
+                <div className="flex items-center gap-6 group">
+                  <div className="bg-white p-5 rounded-[24px] shadow-sm"><Mail className="text-emerald-600" /></div>
                   <div>
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Email</p>
-                    <p className="font-bold">contact@medi-go.tg</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Email</p>
+                    <p className="font-bold text-lg">contact@medi-go.tg</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="bg-white p-4 rounded-2xl shadow-sm"><Phone className="text-emerald-600" /></div>
+                <div className="flex items-center gap-6 group">
+                  <div className="bg-white p-5 rounded-[24px] shadow-sm"><MapPin className="text-emerald-600" /></div>
                   <div>
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Téléphone</p>
-                    <p className="font-bold">+228 90 00 00 00</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="bg-white p-4 rounded-2xl shadow-sm"><MapPin className="text-emerald-600" /></div>
-                  <div>
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Siège</p>
-                    <p className="font-bold">Lomé, Quartier Adidoadin</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Siège</p>
+                    <p className="font-bold text-lg">Lomé, Togo</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white p-8 md:p-12 rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-100">
+            <div className="bg-white p-8 md:p-12 rounded-[48px] shadow-2xl shadow-slate-200 border border-slate-100">
               {sent ? (
                 <div className="text-center py-10 animate-in zoom-in duration-300">
                   <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
                     <CheckCircle2 className="text-emerald-600 w-10 h-10" />
                   </div>
-                  <h3 className="text-2xl font-black mb-2">Message envoyé !</h3>
-                  <p className="text-slate-500">Merci de nous avoir contactés. <br/>Nous vous répondrons sous 24h.</p>
+                  <h3 className="text-3xl font-black mb-2">Message envoyé !</h3>
+                  <p className="text-slate-500">Nous vous répondrons sous 24h.</p>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-8">
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Nom complet</label>
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Nom Complet</label>
                     <input 
                       type="text" required
                       value={formData.name}
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="w-full bg-slate-50 border-none rounded-2xl py-4 px-6 outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
+                      className="w-full bg-slate-50 border-none rounded-2xl py-5 px-6 outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
                       placeholder="Jean Dupont"
                     />
                   </div>
@@ -129,7 +129,7 @@ export default function AboutPage() {
                       type="email" required
                       value={formData.email}
                       onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className="w-full bg-slate-50 border-none rounded-2xl py-4 px-6 outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
+                      className="w-full bg-slate-50 border-none rounded-2xl py-5 px-6 outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
                       placeholder="jean@exemple.tg"
                     />
                   </div>
@@ -139,11 +139,11 @@ export default function AboutPage() {
                       required rows={4}
                       value={formData.message}
                       onChange={(e) => setFormData({...formData, message: e.target.value})}
-                      className="w-full bg-slate-50 border-none rounded-2xl py-4 px-6 outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium resize-none"
+                      className="w-full bg-slate-50 border-none rounded-2xl py-5 px-6 outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium resize-none"
                       placeholder="Comment pouvons-nous vous aider ?"
                     ></textarea>
                   </div>
-                  <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-lg hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-xl shadow-slate-200">
+                  <button type="submit" className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-lg hover:bg-emerald-700 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-100">
                     Envoyer le message <Send className="w-5 h-5" />
                   </button>
                 </form>
@@ -153,7 +153,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <footer className="bg-white py-12 text-center text-slate-400 text-sm">
+      <footer className="bg-white py-12 text-center text-slate-400 text-xs">
         <p>© 2026 MediGo. Tous droits réservés.</p>
       </footer>
     </main>

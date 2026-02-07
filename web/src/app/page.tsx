@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Clock, Calendar, Pill, Phone, Loader2, MessageCircle, X, Send, Camera, ShieldCheck, Heart, User, LogOut } from 'lucide-react';
+import { Search, MapPin, Clock, Calendar, Pill, Phone, Loader2, MessageCircle, X, Send, Camera, ShieldCheck, Heart, User, LogOut, Activity, Database } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -57,14 +57,43 @@ const LandingPage = () => (
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
           </span>
-          La référence santé au Togo
+          Écosystème Santé Digitalisé
         </div>
         <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 mb-8 tracking-tight">
-          Votre santé, <span className="text-emerald-600">notre priorité.</span>
+          Votre santé, <span className="text-emerald-600">connectée.</span>
         </h1>
         <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-12 leading-relaxed">
-          MediGo simplifie votre accès aux soins. Localisez les pharmacies de garde, vérifiez la disponibilité de vos médicaments et consultez des experts, le tout depuis votre mobile.
+          MediGo unifie la gestion des pharmacies de garde, le suivi des patients et l'optimisation des rendez-vous médicaux sur une plateforme unique.
         </p>
+
+        {/* DEMO ACCESS SECTION */}
+        <div className="mb-12 bg-white p-8 rounded-[40px] border border-slate-200 max-w-2xl mx-auto shadow-2xl shadow-slate-200/50 flex flex-col md:flex-row items-center gap-8">
+          <div className="flex-1 text-left">
+            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-2">Accès Mobile Rapide</p>
+            <h3 className="text-2xl font-black text-slate-900 mb-4">Scannez pour tester sur votre téléphone</h3>
+            <p className="text-slate-500 text-sm mb-6 font-medium">Accédez instantanément à la plateforme MediGo en scannant ce QR code avec votre appareil photo.</p>
+            <div className="flex flex-wrap gap-3">
+                 <Link href="/demo-patient" className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all text-xs uppercase tracking-wide shadow-lg shadow-emerald-200 hover:-translate-y-0.5">
+                    <User className="w-4 h-4" />
+                    Espace Patient
+                 </Link>
+                 <Link href="/demo-medecin" className="inline-flex items-center gap-2 px-5 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all text-xs uppercase tracking-wide shadow-lg shadow-slate-200 hover:-translate-y-0.5">
+                    <Activity className="w-4 h-4" />
+                    Espace Docteur
+                 </Link>
+            </div>
+          </div>
+          <div className="bg-slate-50 p-4 rounded-3xl border-2 border-dashed border-slate-200 relative group">
+             <div className="absolute inset-0 bg-emerald-500/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+             <img 
+                src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://medi-go-murex.vercel.app/" 
+                alt="Scanner MediGo" 
+                className="w-32 h-32 relative z-10"
+             />
+             <p className="text-[8px] font-black text-slate-400 uppercase text-center mt-3 tracking-widest">Scanner MediGo</p>
+          </div>
+        </div>
+
         <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
           <Link href="/inscription" className="w-full md:w-auto px-8 py-4 bg-emerald-600 text-white font-bold text-lg rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2">
             <User className="w-5 h-5" />
@@ -89,20 +118,20 @@ const LandingPage = () => (
           {[ 
             {
               icon: <MapPin className="w-8 h-8 text-blue-500" />,
-              title: "Proximité Immédiate",
-              desc: "Géolocalisez instantanément les pharmacies ouvertes et de garde autour de vous, où que vous soyez.",
+              title: "Réseau de Santé",
+              desc: "Localisez instantanément les pharmacies de garde et les centres de soins les plus proches.",
               color: "bg-blue-50"
             },
             {
-              icon: <Search className="w-8 h-8 text-emerald-500" />,
-              title: "Disponibilité Réelle",
-              desc: "Plus besoin de faire le tour de la ville. Vérifiez si votre ordonnance est disponible avant de vous déplacer.",
+              icon: <Activity className="w-8 h-8 text-emerald-500" />,
+              title: "Suivi Patient",
+              desc: "Gérez vos rendez-vous, vos ordonnances et vos constantes vitales depuis votre espace personnel.",
               color: "bg-emerald-50"
             },
             {
               icon: <ShieldCheck className="w-8 h-8 text-purple-500" />,
-              title: "Sécurité & Conseil",
-              desc: "Des informations fiables et un accès direct à des professionnels de santé pour vous guider.",
+              title: "Données Sécurisées",
+              desc: "Une plateforme sécurisée garantissant la confidentialité absolue de vos informations médicales.",
               color: "bg-purple-50"
             }
           ].map((item, idx) => (
@@ -362,8 +391,17 @@ export default function Home() {
   // 1. Loading State (Auth Check)
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex flex-col gap-4 items-center justify-center">
         <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
+        <p className="text-slate-500 font-medium animate-pulse">Connexion au serveur...</p>
+        
+        {/* BOUTON D'URGENCE POUR LA DEMO */}
+        <button 
+          onClick={() => { setAuthLoading(false); localStorage.removeItem('token'); }}
+          className="mt-4 px-6 py-2 bg-slate-200 text-slate-700 font-bold rounded-full text-sm hover:bg-slate-300 transition-colors"
+        >
+          Passer (Mode Démo)
+        </button>
       </div>
     );
   }
