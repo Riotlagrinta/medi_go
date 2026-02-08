@@ -190,6 +190,23 @@ export default function Home() {
   const [chatMessage, setChatMessage] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsVisible(false); // On descend -> on cache
+      } else {
+        setIsVisible(true); // On monte -> on montre
+      }
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -468,13 +485,13 @@ export default function Home() {
       </section>
 
       {/* BOUTON FLOTTANT DE VUE (LISTE/CARTE) */}
-      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60]">
+      <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-28 opacity-0'}`}>
         <button 
           onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
-          className="bg-slate-900 text-white px-6 py-3.5 rounded-full font-black shadow-2xl flex items-center gap-2 active:scale-95 transition-all border border-slate-700/50 backdrop-blur-md bg-opacity-90"
+          className="bg-slate-900/90 text-white px-8 py-4 rounded-full font-black shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-3 active:scale-90 transition-all border border-white/10 backdrop-blur-2xl"
         >
           {viewMode === 'list' ? (
-            <><MapPin className="w-5 h-5 text-emerald-400" /> Voir la carte</>
+            <><MapPin className="w-5 h-5 text-emerald-400 animate-pulse" /> Voir la carte</>
           ) : (
             <><Search className="w-5 h-5 text-emerald-400" /> Voir la liste</>
           )}
