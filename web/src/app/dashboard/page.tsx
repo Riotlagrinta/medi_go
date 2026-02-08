@@ -2,322 +2,191 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Pill, LayoutDashboard, Package, Calendar, Settings, 
-  LogOut, Bell, Clock, CheckCircle2, XCircle, 
-  Power, Camera, MessageSquare 
+  TrendingUp, Package, Clock, Users, 
+  AlertTriangle, ArrowUpRight, FileText, 
+  Download, Filter, Calendar, Pill
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { supabase } from '@/lib/supabase';
 
-interface Pharmacy {
-  id: number;
-  name: string;
+interface Stats {
+  total_revenue: number;
+  transaction_count: number;
+  generated_at: string;
+  transactions: any[];
 }
 
-interface Reservation {
-  id: string;
-  medication_name: string;
-  pharmacy_name: string;
-  quantity: number;
-  created_at: string;
-  status: string;
-}
-
-interface UserSession {
-  id: number;
-  email: string;
-  role: string;
-  full_name: string;
-  pharmacy_id: number;
-}
-
-export default function Dashboard() {
-  const [user, setUser] = useState<UserSession | null>(null);
-  const [pharmacy, setPharmacy] = useState<Pharmacy | null>(null);
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+export default function PharmacieDashboard() {
+  const [report, setReport] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isOnDuty, setIsOnDuty] = useState(false);
-  const router = useRouter();
+  const [pharmacyName, setPharmacyName] = useState('Ma Pharmacie');
 
   useEffect(() => {
-    const checkSession = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/connexion');
-        return;
-      }
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setPharmacyName(user.pharmacy_name || 'Ma Pharmacie');
+    }
 
+    const fetchReport = async () => {
       try {
-        const response = await api.get('/auth/me');
-        if (!response.ok) throw new Error('Invalid session');
-        
-        const userData = await response.json();
-        
-        // SÉCURITÉ : Seuls les admins et super_admins peuvent entrer
-        if (userData.role !== 'pharmacy_admin' && userData.role !== 'super_admin') {
-          router.push('/');
-          return;
-        }
-
-        setUser(userData);
-        fetchData(userData);
-      } catch (error) {
-        localStorage.clear();
-        router.push('/connexion');
-      }
-    };
-
-    const fetchData = async (userData: UserSession) => {
-      try {
-        const [resResponse, msgResponse, pharmacyResponse] = await Promise.all([
-          api.get('/reservations'),
-          api.get(`/messages/${userData.pharmacy_id}`),
-          api.get(`/pharmacies/${userData.pharmacy_id}`)
-        ]);
-        
-        const [allRes, allMsgs, pharmacyData] = await Promise.all([
-          resResponse.json(),
-          msgResponse.json(),
-          pharmacyResponse.json()
-        ]);
-
-        setReservations(allRes || []);
-        
-        const hasPatientMsg = Array.isArray(allMsgs) ? allMsgs.some((m: any) => !m.is_from_pharmacy) : false;
-        if (hasPatientMsg) setUnreadCount(1);
-        
-        setPharmacy({ name: pharmacyData?.name || 'Ma Pharmacie', id: userData.pharmacy_id });
-        setIsOnDuty(pharmacyData?.is_on_duty || false); 
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        const res = await api.get('/reports/sales');
+        if (res.ok) setReport(await res.json());
+      } catch (err) {
+        console.error("Erreur chargement rapport:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    checkSession();
-  }, [router]);
+    fetchReport();
+  }, []);
 
-  const toggleOnDuty = async () => {
-    if (!pharmacy) return;
-    try {
-      const newStatus = !isOnDuty;
-      const response = await api.patch(`/pharmacies/${pharmacy.id}`, { is_on_duty: newStatus });
-
-      if (response.ok) {
-        setIsOnDuty(newStatus);
-      }
-    } catch (error) {
-      console.error('Failed to toggle on-duty status:', error);
-    }
+  const handlePrint = () => {
+    window.print();
   };
-
-  const handleLogout = () => {
-    localStorage.clear();
-    router.push('/connexion');
-  };
-
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
-    </div>
-  );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row pb-20 lg:pb-0">
-      <aside className="w-64 bg-white border-r border-slate-100 hidden lg:flex flex-col sticky top-0 h-screen">
-        <div className="p-6 flex items-center gap-2">
-          <div className="bg-emerald-600 p-1.5 rounded-lg">
-            <Pill className="text-white w-5 h-5" />
+    <div className="min-h-screen bg-slate-50 pb-12">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-100 px-4 md:px-8 py-8 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest">Dashboard</span>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">{pharmacyName}</h1>
+            </div>
+            <p className="text-slate-500 font-medium">Gestion et statistiques en temps réel</p>
           </div>
-          <span className="text-xl font-bold text-slate-800">MediGo Pro</span>
-        </div>
-
-        <nav className="flex-1 px-4 space-y-2 mt-4">
-          <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 bg-emerald-50 text-emerald-700 rounded-xl font-bold">
-            <LayoutDashboard className="w-5 h-5" /> Dashboard
-          </Link>
-          <Link href="/dashboard/stocks" className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors">
-            <Package className="w-5 h-5" /> Stocks
-          </Link>
-          <Link href="/dashboard/chat" className="flex items-center justify-between px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors">
-            <div className="flex items-center gap-3">
-              <MessageSquare className="w-5 h-5" /> Messagerie
-            </div>
-            {unreadCount > 0 && <span className="w-2 h-2 bg-red-500 rounded-full"></span>}
-          </Link>
-          <Link href="/dashboard/ordonnances" className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors">
-            <Camera className="w-5 h-5" /> Ordonnances
-          </Link>
-          <Link href="/dashboard/rdv" className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors">
-            <Calendar className="w-5 h-5" /> Rendez-vous
-          </Link>
-          <Link href="/dashboard/parametres" className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors">
-            <Settings className="w-5 h-5" /> Paramètres
-          </Link>
-        </nav>
-
-        <div className="p-4 mt-auto">
-          <button 
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl font-medium transition-colors"
-          >
-            <LogOut className="w-5 h-5" /> Déconnexion
-          </button>
-        </div>
-      </aside>
-
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-20 bg-white border-b border-slate-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20">
-          <div className="flex items-center gap-3">
-            <div className="lg:hidden bg-emerald-600 p-1.5 rounded-lg">
-              <Pill className="text-white w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base md:text-xl font-bold text-slate-800 truncate max-w-[150px] md:max-w-none">{pharmacy?.name}</h2>
-              <p className="text-[10px] md:text-sm text-slate-500">Admin Panel</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 md:gap-6">
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 md:px-4 md:py-2 rounded-2xl">
-              <span className={`w-2 h-2 rounded-full ${isOnDuty ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></span>
-              <span className="hidden md:inline text-sm font-bold text-slate-700">{isOnDuty ? 'DE GARDE' : 'HORS GARDE'}</span>
-              <button 
-                onClick={toggleOnDuty}
-                className={`p-1.5 rounded-lg transition-all ${isOnDuty ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}`}
-              >
-                <Power className="w-4 h-4" />
-              </button>
-            </div>
-            
+          <div className="flex gap-3 w-full md:w-auto">
             <button 
-              onClick={handleLogout}
-              className="lg:hidden p-2 text-red-500 bg-red-50 rounded-xl"
+              onClick={handlePrint}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 active:scale-95"
             >
-              <LogOut className="w-5 h-5" />
-            </button>
-
-            <button className="relative p-2 text-slate-400 hover:text-emerald-600 transition-colors">
-              <Bell className="w-6 h-6" />
-              {unreadCount > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>}
+              <FileText className="w-5 h-5" /> Exporter PDF
             </button>
           </div>
-        </header>
+        </div>
+      </div>
 
-        <div className="p-4 md:p-8 space-y-6 md:space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-            <div className="bg-white p-5 md:p-6 rounded-[24px] md:rounded-[32px] shadow-sm border border-slate-100 flex items-center sm:block gap-4">
-              <div className="bg-blue-50 w-12 h-12 rounded-2xl flex items-center justify-center sm:mb-4 text-blue-600 flex-shrink-0">
-                <Package className="w-6 h-6" />
+      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          {[
+            { label: 'Ventes du jour', value: `${(report?.total_revenue || 0).toLocaleString()} F`, icon: <TrendingUp className="text-emerald-500" />, trend: '+14%', color: 'bg-emerald-50' },
+            { label: 'Commandes', value: report?.transaction_count || 0, icon: <Package className="text-blue-500" />, trend: '+2', color: 'bg-blue-50' },
+            { label: 'Stock Faible', value: '4', icon: <AlertTriangle className="text-amber-500" />, trend: '-10%', color: 'bg-amber-50' },
+            { label: 'Patients', value: '128', icon: <Users className="text-purple-500" />, trend: '+5%', color: 'bg-purple-50' },
+          ].map((stat, i) => (
+            <div key={i} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start mb-4">
+                <div className={`${stat.color} p-4 rounded-2xl`}>{stat.icon}</div>
+                <span className="text-xs font-black text-emerald-600 flex items-center gap-1">
+                  {stat.trend} <ArrowUpRight className="w-3 h-3" />
+                </span>
               </div>
-              <div>
-                <p className="text-xs md:text-sm font-medium text-slate-500">Réservations actives</p>
-                <h3 className="text-xl md:text-2xl font-bold text-slate-800 mt-1">{reservations.length}</h3>
-              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-1">{stat.value}</h3>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-tight">{stat.label}</p>
             </div>
-            <div className="bg-white p-5 md:p-6 rounded-[24px] md:rounded-[32px] shadow-sm border border-slate-100 flex items-center sm:block gap-4">
-              <div className="bg-amber-50 w-12 h-12 rounded-2xl flex items-center justify-center sm:mb-4 text-amber-600 flex-shrink-0">
-                <Clock className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-xs md:text-sm font-medium text-slate-500">RDV aujourd&apos;hui</p>
-                <h3 className="text-xl md:text-2xl font-bold text-slate-800 mt-1">2</h3>
-              </div>
-            </div>
-            <div className="bg-white p-5 md:p-6 rounded-[24px] md:rounded-[32px] shadow-sm border border-slate-100 flex items-center sm:block gap-4">
-              <div className="bg-emerald-50 w-12 h-12 rounded-2xl flex items-center justify-center sm:mb-4 text-emerald-600 flex-shrink-0">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-xs md:text-sm font-medium text-slate-500">Chiffre d&apos;affaires (EST.)</p>
-                <h3 className="text-xl md:text-2xl font-bold text-slate-800 mt-1">45,000 F</h3>
-              </div>
-            </div>
-          </div>
+          ))}
+        </div>
 
-          <div className="bg-white rounded-[24px] md:rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
-            <div className="p-5 md:p-6 border-b border-slate-50 flex justify-between items-center">
-              <h3 className="font-bold text-base md:text-lg text-slate-800">Réservations récentes</h3>
-              <button className="text-xs md:text-sm text-emerald-600 font-bold hover:underline">Tout voir</button>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Recent Sales Table */}
+          <div className="lg:col-span-2 bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+              <h2 className="text-xl font-black text-slate-800">Dernières Transactions</h2>
+              <button className="text-sm font-bold text-emerald-600 hover:bg-emerald-50 px-4 py-2 rounded-xl transition-all">Voir tout</button>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left min-w-[500px] sm:min-w-0">
-                <thead className="bg-slate-50/50 text-slate-400 text-[10px] uppercase font-bold tracking-wider">
+              <table className="w-full">
+                <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                   <tr>
-                    <th className="px-6 py-4">Médicament</th>
-                    <th className="hidden sm:table-cell px-6 py-4">Quantité</th>
-                    <th className="hidden md:table-cell px-6 py-4">Date</th>
-                    <th className="px-6 py-4">Statut</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
+                    <th className="px-8 py-4 text-left">Date</th>
+                    <th className="px-8 py-4 text-left">Produit</th>
+                    <th className="px-8 py-4 text-right">Montant</th>
+                    <th className="px-8 py-4 text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {Array.isArray(reservations) && reservations.map((res) => (
-                    <tr key={res.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <span className="font-bold text-slate-700 text-sm block">{res.medication_name}</span>
-                        <span className="sm:hidden text-[10px] text-slate-400">{res.quantity} unités</span>
+                  {report?.transactions.map((t, i) => (
+                    <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-8 py-5 text-sm font-bold text-slate-600">
+                        {new Date(t.date).toLocaleDateString()}
                       </td>
-                      <td className="hidden sm:table-cell px-6 py-4 text-slate-500 text-sm">{res.quantity} unités</td>
-                      <td className="hidden md:table-cell px-6 py-4 text-slate-500 text-sm">
-                        {new Date(res.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase">
-                          {res.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-1">
-                          <button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                            <CheckCircle2 className="w-5 h-5" />
-                          </button>
-                          <button className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                            <XCircle className="w-5 h-5" />
-                          </button>
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <Pill className="w-4 h-4 text-slate-400" />
+                          </div>
+                          <span className="text-sm font-black text-slate-800">{t.item}</span>
                         </div>
+                      </td>
+                      <td className="px-8 py-5 text-right font-black text-slate-900">
+                        {t.amount.toLocaleString()} F
+                      </td>
+                      <td className="px-8 py-5 text-right">
+                        <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-3 py-1 rounded-full uppercase">Payé</span>
                       </td>
                     </tr>
                   ))}
+                  {!report?.transactions.length && (
+                    <tr><td colSpan={4} className="p-12 text-center text-slate-400 font-medium">Aucune transaction aujourd'hui</td></tr>
+                  )}
                 </tbody>
               </table>
-              {reservations.length === 0 && (
-                <div className="p-12 text-center text-slate-400 text-sm">
-                  Aucune réservation pour le moment.
-                </div>
-              )}
+            </div>
+          </div>
+
+          {/* Quick Actions & Alerts */}
+          <div className="space-y-8">
+            <div className="bg-slate-900 rounded-[40px] p-8 text-white relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full -mr-10 -mt-10"></div>
+               <h3 className="text-lg font-black mb-6 flex items-center gap-2">
+                 <Download className="w-5 h-5 text-emerald-400" /> Actions Rapides
+               </h3>
+               <div className="grid grid-cols-1 gap-3">
+                 <Link href="/dashboard/stocks" className="bg-white/10 hover:bg-white/20 p-4 rounded-2xl flex items-center justify-between group transition-all">
+                    <span className="font-bold">Gérer les stocks</span>
+                    <ChevronRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                 </Link>
+                 <Link href="/dashboard/ordonnances" className="bg-white/10 hover:bg-white/20 p-4 rounded-2xl flex items-center justify-between group transition-all">
+                    <span className="font-bold">Traitement ordonnances</span>
+                    <ChevronRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                 </Link>
+                 <Link href="/dashboard/rdv" className="bg-white/10 hover:bg-white/20 p-4 rounded-2xl flex items-center justify-between group transition-all">
+                    <span className="font-bold">Consulter les RDV</span>
+                    <ChevronRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                 </Link>
+               </div>
+            </div>
+
+            <div className="bg-white rounded-[40px] border border-slate-100 p-8 shadow-sm">
+              <div className="flex items-center gap-2 mb-6">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                <h3 className="text-lg font-black text-slate-800">Alertes Stock</h3>
+              </div>
+              <div className="space-y-4">
+                {[
+                  { name: 'Doliprane 500mg', qty: 4 },
+                  { name: 'Insuline Novomix', qty: 2 }
+                ].map((item, i) => (
+                  <div key={i} className="flex justify-between items-center p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                    <span className="font-bold text-slate-800 text-sm">{item.name}</span>
+                    <span className="text-xs font-black text-amber-600 bg-white px-2 py-1 rounded-lg">{item.qty} restants</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </main>
-
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex items-center justify-around p-3 z-30 pb-safe">
-        <Link href="/dashboard" className="flex flex-col items-center gap-1 text-emerald-600">
-          <LayoutDashboard className="w-6 h-6" />
-          <span className="text-[10px] font-bold">Dashboard</span>
-        </Link>
-        <Link href="/dashboard/stocks" className="flex flex-col items-center gap-1 text-slate-400">
-          <Package className="w-6 h-6" />
-          <span className="text-[10px] font-medium">Stocks</span>
-        </Link>
-        <Link href="/dashboard/chat" className="flex flex-col items-center gap-1 text-slate-400 relative">
-          <MessageSquare className="w-6 h-6" />
-          <span className="text-[10px] font-medium">Chat</span>
-          {unreadCount > 0 && <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>}
-        </Link>
-        <Link href="/dashboard/ordonnances" className="flex flex-col items-center gap-1 text-slate-400">
-          <Camera className="w-6 h-6" />
-          <span className="text-[10px] font-medium">Ordo</span>
-        </Link>
-        <Link href="/dashboard/parametres" className="flex flex-col items-center gap-1 text-slate-400">
-          <Settings className="w-6 h-6" />
-          <span className="text-[10px] font-medium">Profil</span>
-        </Link>
-      </nav>
     </div>
   );
 }
+
+const ChevronRight = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+  </svg>
+);

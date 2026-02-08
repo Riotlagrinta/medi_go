@@ -189,6 +189,7 @@ export default function Home() {
   const [showChat, setShowChat] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -375,76 +376,114 @@ export default function Home() {
 
   // 3. Authenticated View (Dashboard)
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-slate-50 flex flex-col">
       {notification && (
-        <div className={`fixed top-20 right-4 z-[60] px-6 py-3 rounded-xl shadow-lg text-white font-bold animate-bounce ${notification.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}`}>
-          {notification.message}
+        <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[100] px-8 py-4 rounded-2xl shadow-2xl text-white font-black animate-in slide-in-from-top-8 duration-500 ${notification.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}`}>
+          <div className="flex items-center gap-3">
+            {notification.type === 'success' ? <ShieldCheck className="w-6 h-6" /> : <Info className="w-6 h-6" />}
+            {notification.message}
+          </div>
         </div>
       )}
 
-      <header className="bg-white shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-emerald-600 p-2 rounded-lg"><Pill className="text-white w-6 h-6" /></div>
-            <span className="text-2xl font-bold text-slate-800">MediGo</span>
+      <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200/50 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3 group cursor-pointer" onClick={() => window.location.href = '/'}>
+            <div className="bg-emerald-600 p-2.5 rounded-2xl shadow-lg shadow-emerald-200 group-hover:rotate-12 transition-transform duration-300">
+              <Pill className="text-white w-6 h-6" />
+            </div>
+            <span className="text-2xl font-black text-slate-900 tracking-tighter">MediGo</span>
           </div>
-          <nav className="hidden md:flex gap-8 text-slate-600 font-medium">
-            <Link href="/" className="hover:text-emerald-600">Accueil</Link>
-            <Link href="/a-propos" className="hover:text-emerald-600">À Propos</Link>
-            <Link href="/commandes" className="hover:text-emerald-600">Mes Commandes</Link>
-            <Link href="/profil" className="hover:text-emerald-600">Mon Profil</Link>
+          
+          <nav className="hidden lg:flex items-center gap-1 bg-slate-100/50 p-1.5 rounded-2xl border border-slate-200/50">
+            <Link href="/" className="px-6 py-2 rounded-xl bg-white shadow-sm text-emerald-600 font-bold text-sm">Accueil</Link>
+            <Link href="/commandes" className="px-6 py-2 rounded-xl text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors">Commandes</Link>
+            <Link href="/a-propos" className="px-6 py-2 rounded-xl text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors">Aide</Link>
           </nav>
-          <div className="flex gap-4">
-            <button 
-              onClick={() => { localStorage.clear(); window.location.reload(); }}
-              className="hidden md:flex items-center gap-2 px-4 py-2 text-red-500 font-bold hover:bg-red-50 rounded-full transition-all"
-            >
-              <LogOut className="w-4 h-4" /> Déconnexion
-            </button>
+
+          <div className="flex items-center gap-3">
             <Link 
               href={user?.role === 'super_admin' ? '/super-admin' : (user?.role === 'patient' ? '/profil' : '/dashboard')} 
-              className="bg-emerald-50 text-emerald-600 px-5 py-2 rounded-full font-semibold hover:bg-emerald-100"
+              className="flex items-center gap-3 pl-2 pr-5 py-2 bg-white border border-slate-200 rounded-full hover:shadow-md transition-all active:scale-95"
             >
-               {user?.full_name || 'Mon Espace'}
+               <div className="w-9 h-9 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-black text-xs border-2 border-white shadow-sm">
+                 {user?.full_name?.charAt(0) || 'U'}
+               </div>
+               <span className="font-bold text-slate-700 text-sm hidden sm:inline">{user?.full_name?.split(' ')[0]}</span>
             </Link>
           </div>
         </div>
       </header>
 
-      <section className="bg-emerald-600 py-10 md:py-16 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-2xl md:text-4xl font-extrabold text-white mb-4 md:mb-6 leading-tight">Trouvez vos médicaments en un clic</h1>
-          <p className="text-emerald-50 text-base md:text-lg mb-8 md:mb-10 opacity-90">Disponibilité en temps réel, pharmacies de garde et livraison rapide.</p>
+      <section className="bg-gradient-to-b from-emerald-600 to-emerald-700 py-12 md:py-24 px-4 relative overflow-hidden">
+        {/* Cercles de décoration en arrière-plan */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 right-0 w-64 h-64 bg-emerald-400/20 rounded-full blur-[80px] translate-x-1/2 translate-y-1/2"></div>
+        
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <h1 className="text-4xl md:text-6xl font-black text-white mb-6 tracking-tight leading-[1.1]">
+            Votre santé au <span className="text-emerald-300">bout des doigts.</span>
+          </h1>
+          <p className="text-emerald-50/80 text-lg md:text-xl mb-12 max-w-2xl mx-auto font-medium">
+            Le réseau intelligent qui connecte les patients et les pharmacies du Togo en temps réel.
+          </p>
           
-          <div className="flex gap-2 mb-6 justify-center">
-            <button onClick={() => setSearchType('medication')} className={`px-5 py-2 rounded-full font-bold text-xs md:text-sm transition-all ${searchType === 'medication' ? 'bg-white text-emerald-600 shadow-md' : 'bg-emerald-700/30 text-emerald-100 hover:bg-emerald-700/50'}`}>Médicaments</button>
-            <button onClick={() => setSearchType('pharmacy')} className={`px-5 py-2 rounded-full font-bold text-xs md:text-sm transition-all ${searchType === 'pharmacy' ? 'bg-white text-emerald-600 shadow-md' : 'bg-emerald-700/30 text-emerald-100 hover:bg-emerald-700/50'}`}>Pharmacies</button>
+          <div className="bg-white/10 backdrop-blur-md p-1.5 rounded-[28px] inline-flex gap-1 mb-8 border border-white/20">
+            <button onClick={() => setSearchType('medication')} className={`px-8 py-3 rounded-2xl font-black text-sm transition-all ${searchType === 'medication' ? 'bg-white text-emerald-700 shadow-xl' : 'text-white hover:bg-white/10'}`}>Médicaments</button>
+            <button onClick={() => setSearchType('pharmacy')} className={`px-8 py-3 rounded-2xl font-black text-sm transition-all ${searchType === 'pharmacy' ? 'bg-white text-emerald-700 shadow-xl' : 'text-white hover:bg-white/10'}`}>Pharmacies</button>
           </div>
 
-          <div className="bg-white p-2 rounded-2xl md:rounded-3xl shadow-xl flex flex-col gap-2">
+          <div className="bg-white p-3 rounded-[32px] shadow-2xl shadow-emerald-900/20 flex flex-col gap-3 max-w-3xl mx-auto border border-white">
             <div className="flex flex-col md:flex-row gap-2">
-              <div className="flex-1 flex items-center px-4 py-3.5 gap-3 bg-slate-50 md:bg-transparent rounded-xl md:rounded-none border-b md:border-b-0 md:border-r border-slate-100">
-                <Search className="text-slate-400 w-5 h-5 flex-shrink-0" />
-                <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder={searchType === 'medication' ? "Quel médicament ?" : "Nom pharmacie..."} className="w-full focus:outline-none text-slate-900 font-semibold bg-transparent text-sm md:text-base" />
+              <div className="flex-[1.5] flex items-center px-6 py-4 gap-4 bg-slate-50 rounded-[24px] group focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
+                <Search className="text-slate-400 w-6 h-6 group-focus-within:text-emerald-500" />
+                <input 
+                  type="text" 
+                  value={query} 
+                  onChange={(e) => setQuery(e.target.value)} 
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()} 
+                  placeholder={searchType === 'medication' ? "Ex: Paracétamol, Insuline..." : "Rechercher une pharmacie..."} 
+                  className="w-full focus:outline-none text-slate-900 font-bold bg-transparent text-lg placeholder:text-slate-300" 
+                />
               </div>
-              <div className="flex-1 flex items-center px-4 py-3.5 gap-3 bg-slate-50 md:bg-transparent rounded-xl md:rounded-none">
-                <MapPin className="text-slate-400 w-5 h-5 flex-shrink-0" />
-                <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="w-full focus:outline-none text-slate-900 font-semibold bg-transparent text-sm md:text-base" />
+              <div className="flex-1 flex items-center px-6 py-4 gap-4 bg-slate-50 rounded-[24px] group focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
+                <MapPin className="text-slate-400 w-6 h-6 group-focus-within:text-emerald-500" />
+                <input 
+                  type="text" 
+                  value={location} 
+                  onChange={(e) => setLocation(e.target.value)} 
+                  className="w-full focus:outline-none text-slate-900 font-bold bg-transparent text-lg" 
+                />
               </div>
             </div>
-            <button onClick={handleSearch} disabled={loading} className="w-full bg-slate-800 text-white py-4 rounded-xl md:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-slate-900 active:scale-[0.98] transition-all">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Lancer la recherche'}
+            <button 
+              onClick={handleSearch} 
+              disabled={loading} 
+              className="w-full bg-emerald-600 text-white py-5 rounded-[24px] font-black text-lg flex items-center justify-center gap-3 hover:bg-emerald-500 active:scale-[0.98] transition-all shadow-xl shadow-emerald-100"
+            >
+              {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Search className="w-6 h-6" /> Rechercher maintenant</>}
             </button>
           </div>
         </div>
       </section>
 
-      {/* CARTE INTERACTIVE - COMPACTE */}
-      {user && (
-        <section className="max-w-7xl mx-auto px-4 -mt-4 mb-8">
-          <div className="bg-white p-1 rounded-[32px] shadow-lg border border-slate-100 overflow-hidden">
-            <div className="h-[250px] transition-all duration-500 hover:h-[400px]">
-              <PharmacyMap 
+      {/* BOUTON FLOTTANT DE VUE (LISTE/CARTE) */}
+      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60]">
+        <button 
+          onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+          className="bg-slate-900 text-white px-6 py-3.5 rounded-full font-black shadow-2xl flex items-center gap-2 active:scale-95 transition-all border border-slate-700/50 backdrop-blur-md bg-opacity-90"
+        >
+          {viewMode === 'list' ? (
+            <><MapPin className="w-5 h-5 text-emerald-400" /> Voir la carte</>
+          ) : (
+            <><Search className="w-5 h-5 text-emerald-400" /> Voir la liste</>
+          )}
+        </button>
+      </div>
+
+      {viewMode === 'map' ? (
+        <section className="h-[calc(100vh-80px)] w-full relative animate-in fade-in duration-500">
+           <PharmacyMap 
                 pharmacies={(results.length > 0 ? results : nearbyPharmacies).map((p: any) => ({
                   id: p.pharmacy_id || p.id,
                   name: p.pharmacy_name || p.name,
@@ -456,104 +495,167 @@ export default function Home() {
                   lng: p.lng || 1.2255
                 }))} 
               />
-            </div>
-            <div className="bg-slate-50 py-2 text-center">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">
-                <MapPin className="w-3 h-3" /> Survolez ou cliquez pour agrandir la vue
-              </p>
-            </div>
-          </div>
+              <div className="absolute top-4 left-4 right-4 bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-slate-100 flex items-center justify-between pointer-events-none">
+                 <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Pharmacies autour de vous</p>
+                 <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-lg">{(results.length > 0 ? results : nearbyPharmacies).length} RÉSULTATS</span>
+              </div>
         </section>
-      )}
-
-      {searched && (
-        <section className="max-w-7xl mx-auto px-4 py-10 md:py-12">
-          <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-6 px-1">Résultats pour &quot;{query}&quot;</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {Array.isArray(results) && results.map((res, idx) => (
-              <div key={idx} className="bg-white p-5 md:p-6 rounded-[28px] md:rounded-3xl shadow-sm border border-slate-100 flex flex-col">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-base md:text-lg text-slate-800 truncate">{res.pharmacy_name}</h3>
-                      {res.is_verified && <ShieldCheck className="w-4 h-4 text-blue-500 fill-blue-50 flex-shrink-0" />}
+      ) : (
+        <>
+          {searched && (
+            <section className="max-w-7xl mx-auto px-4 py-16 md:py-20 animate-in fade-in slide-in-from-bottom-8 duration-700">
+              <div className="flex items-center justify-between mb-10">
+                <div>
+                  <h2 className="text-3xl font-black text-slate-900 tracking-tight">Résultats trouvés</h2>
+                  <p className="text-slate-500 font-medium">Pour votre recherche : <span className="text-emerald-600">"{query}"</span></p>
+                </div>
+                <div className="hidden sm:block px-4 py-2 bg-slate-100 rounded-full text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  {results.length} résultats
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {Array.isArray(results) && results.map((res, idx) => (
+                  <div key={idx} className="bg-white rounded-[32px] p-2 shadow-sm border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col group">
+                    <div className="bg-slate-50 rounded-[28px] p-6 mb-4 flex-1">
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="bg-white p-3 rounded-2xl shadow-sm group-hover:scale-110 transition-transform duration-500">
+                          <Pill className="w-6 h-6 text-emerald-500" />
+                        </div>
+                        {res.is_on_duty && (
+                          <span className="bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg shadow-red-200 uppercase tracking-tighter">De Garde</span>
+                        )}
+                      </div>
+                      
+                      <h3 className="text-xl font-black text-slate-900 mb-2 group-hover:text-emerald-600 transition-colors">{res.medication_name}</h3>
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                          <MapPin className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <span className="text-sm font-bold text-slate-600 truncate">{res.pharmacy_name}</span>
+                      </div>
+                      
+                      <div className="flex items-baseline gap-1 mt-6">
+                        <span className="text-3xl font-black text-slate-900">{parseFloat(res.price).toLocaleString()}</span>
+                        <span className="text-sm font-black text-slate-400 uppercase">F CFA</span>
+                      </div>
                     </div>
-                    <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{(res.distance / 1000).toFixed(1)} km - {res.address}</span></p>
+                    
+                    <button 
+                      onClick={() => handleReserve(res.pharmacy_id, res.medication_id)} 
+                      className="w-full bg-slate-900 text-white py-5 rounded-[24px] font-black hover:bg-emerald-600 active:scale-95 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2"
+                    >
+                      {res.medication_id === 0 ? 'Contacter' : 'Acheter maintenant'}
+                    </button>
                   </div>
-                  {res.is_on_duty && <span className="bg-red-100 text-red-600 text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-full uppercase flex-shrink-0 ml-2">De Garde</span>}
-                </div>
-                <div className="bg-slate-50 p-4 rounded-2xl mb-5">
-                  <div className="flex justify-between items-center gap-2">
-                    <span className="font-bold text-slate-700 text-sm md:text-base truncate">{res.medication_name}</span>
-                    <span className="font-black text-emerald-600 text-sm md:text-base whitespace-nowrap">{res.price} {res.price !== '---' ? 'F' : ''}</span>
-                  </div>
-                </div>
-                <button onClick={() => handleReserve(res.pharmacy_id, res.medication_id)} className="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold hover:bg-emerald-700 active:scale-[0.98] transition-all text-sm md:text-base shadow-lg shadow-emerald-100 mt-auto">
-                  {res.medication_id === 0 ? 'Appeler la pharmacie' : 'Réserver / Acheter'}
-                </button>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
+            </section>
+          )}
+
+          <section className="max-w-7xl mx-auto px-4 mt-12 mb-16">
+            <div className="bg-white p-8 md:p-12 rounded-[48px] shadow-sm border border-slate-100 grid grid-cols-2 lg:grid-cols-4 gap-8">
+              {[
+                { icon: <Clock className="w-6 h-6" />, label: "De Garde", desc: "Ouvert 24h/7", action: handleOnDutySearch, color: "text-red-600", bg: "bg-red-50" },
+                { icon: <Camera className="w-6 h-6" />, label: "Ordonnance", desc: "Scan rapide", action: () => {}, color: "text-blue-600", bg: "bg-blue-50", type: "file" },
+                { icon: <Calendar className="w-6 h-6" />, label: "RDV", desc: "Sans attente", action: () => {}, color: "text-emerald-600", bg: "bg-emerald-50" },
+                { icon: <MessageCircle className="w-6 h-6" />, label: "Conseil", desc: "Chat expert", action: () => setShowChat(true), color: "text-amber-600", bg: "bg-amber-50" }
+              ].map((item, i) => (
+                <div 
+                  key={i} 
+                  onClick={item.action}
+                  className="flex flex-col items-center text-center group cursor-pointer"
+                >
+                  <div className={`${item.bg} ${item.color} p-6 rounded-3xl mb-4 group-hover:scale-110 group-hover:shadow-lg transition-all duration-300 relative`}>
+                    {item.icon}
+                    {item.type === 'file' && <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={handlePrescriptionUpload} />}
+                  </div>
+                  <h3 className="font-black text-slate-900 text-lg mb-1">{item.label}</h3>
+                  <p className="text-sm font-bold text-slate-400 uppercase tracking-tighter">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section id="pharmacies-section" className="max-w-7xl mx-auto px-4 py-20">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
+              <div>
+                <div className="inline-block px-4 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-widest mb-3">Géolocalisation</div>
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-none">Pharmacies à proximité</h2>
+              </div>
+              <button 
+                onClick={() => setShowAll(!showAll)} 
+                className="self-start md:self-auto bg-white px-6 py-3 rounded-2xl font-black text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
+              >
+                {showAll ? 'Voir moins' : 'Tout afficher'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {(Array.isArray(nearbyPharmacies) ? (showAll ? nearbyPharmacies : nearbyPharmacies.slice(0, 3)) : []).map((p) => (
+                <div key={p.id} className="group bg-white rounded-[40px] p-3 shadow-sm border border-slate-100 hover:shadow-2xl transition-all duration-500 overflow-hidden">
+                  <div className="relative h-56 rounded-[32px] overflow-hidden bg-slate-100 mb-6">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                    <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-2xl text-[10px] font-black text-emerald-600 shadow-xl">OUVERT</div>
+                    <div className="absolute bottom-6 left-6 flex items-center gap-2 text-white">
+                      <div className="bg-white/20 backdrop-blur-md p-2 rounded-xl">
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Distance</p>
+                        <p className="text-xl font-black">{(p.distance / 1000).toFixed(1)} km</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="px-5 pb-6">
+                    <h4 className="text-2xl font-black text-slate-900 mb-3 group-hover:text-emerald-600 transition-colors truncate">{p.name}</h4>
+                    <p className="text-slate-500 font-medium text-sm mb-8 line-clamp-2 h-10">{p.address}</p>
+                    <div className="flex gap-3">
+                      <button className="flex-[2] bg-emerald-600 text-white py-4 rounded-2xl font-black text-sm hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all active:scale-95">Commander</button>
+                      <button onClick={() => handleAppointment(p.id, p.name)} className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black text-sm hover:bg-slate-200 transition-all active:scale-95">RDV</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </>
       )}
 
-      <section className="max-w-7xl mx-auto px-4 -mt-6 md:-mt-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <div onClick={handleOnDutySearch} className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-md border border-slate-100 flex flex-col items-center text-center cursor-pointer hover:translate-y-[-4px] active:scale-95 transition-all">
-            <div className="bg-red-50 p-3 md:p-4 rounded-2xl mb-3 md:mb-4"><Clock className="text-red-600 w-5 h-5 md:w-6 md:h-6" /></div>
-            <h3 className="font-bold text-slate-800 text-sm md:text-base leading-tight">De Garde</h3>
-            <p className="hidden xs:block text-[10px] md:text-sm text-slate-500 mt-1">Ouvertes 24/7</p>
-          </div>
-          <label className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-md border border-slate-100 flex flex-col items-center text-center cursor-pointer hover:translate-y-[-4px] active:scale-95 transition-all">
-            <div className="bg-blue-50 p-3 md:p-4 rounded-2xl mb-3 md:mb-4"><Camera className="text-blue-600 w-5 h-5 md:w-6 md:h-6" /></div>
-            <h3 className="font-bold text-slate-800 text-sm md:text-base leading-tight">Ordonnance</h3>
-            <p className="hidden xs:block text-[10px] md:text-sm text-slate-500 mt-1">Envoyer photo</p>
-            <input type="file" className="hidden" accept="image/*" onChange={handlePrescriptionUpload} />
-          </label>
-          <div onClick={() => { document.getElementById('pharmacies-section')?.scrollIntoView({ behavior: 'smooth' }); setNotification({ message: 'Choisissez une pharmacie ci-dessous', type: 'success' }); }} className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-md border border-slate-100 flex flex-col items-center text-center cursor-pointer hover:translate-y-[-4px] active:scale-95 transition-all">
-            <div className="bg-emerald-50 p-3 md:p-4 rounded-2xl mb-3 md:mb-4"><Calendar className="text-emerald-600 w-5 h-5 md:w-6 md:h-6" /></div>
-            <h3 className="font-bold text-slate-800 text-sm md:text-base leading-tight">RDV</h3>
-            <p className="hidden xs:block text-[10px] md:text-sm text-slate-500 mt-1">Prendre RDV</p>
-          </div>
-          <div onClick={() => setShowChat(true)} className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-md border border-slate-100 flex flex-col items-center text-center cursor-pointer hover:translate-y-[-4px] active:scale-95 transition-all">
-            <div className="bg-amber-50 p-3 md:p-4 rounded-2xl mb-3 md:mb-4"><Phone className="text-amber-600 w-5 h-5 md:w-6 md:h-6" /></div>
-            <h3 className="font-bold text-slate-800 text-sm md:text-base leading-tight">Conseil</h3>
-            <p className="hidden xs:block text-[10px] md:text-sm text-slate-500 mt-1">Chat direct</p>
-          </div>
-        </div>
-      </section>
-
-      <section id="pharmacies-section" className="max-w-7xl mx-auto px-4 py-12 md:py-16">
-        <div className="flex justify-between items-end mb-6 md:mb-8">
-          <div>
-            <h2 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight">Pharmacies à proximité</h2>
-            <p className="text-xs md:text-sm text-slate-500 mt-0.5">Basé sur votre position</p>
-          </div>
-          <button onClick={() => setShowAll(!showAll)} className="text-emerald-600 font-bold hover:underline text-sm md:text-base">{showAll ? 'Voir moins' : 'Voir tout'}</button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          {(Array.isArray(nearbyPharmacies) ? (showAll ? nearbyPharmacies : nearbyPharmacies.slice(0, 3)) : []).map((p) => (
-            <div key={p.id} className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-slate-100 group hover:shadow-xl transition-all duration-300">
-              <div className="h-40 md:h-48 bg-slate-100 relative flex items-center justify-center overflow-hidden">
-                <MapPin className="w-10 md:w-12 h-10 md:h-12 text-slate-300 opacity-30 group-hover:scale-110 transition-transform duration-500" />
-                <div className="absolute top-4 right-4 bg-emerald-500 text-white text-[9px] md:text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg shadow-emerald-500/20">OUVERT</div>
-                <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-xl text-[10px] font-bold shadow-sm">{(p.distance / 1000).toFixed(1)} km</div>
+      <footer className="bg-slate-900 py-20 px-4 mt-20 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-600/10 rounded-full blur-[120px]"></div>
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 relative z-10">
+          <div className="md:col-span-2">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="bg-emerald-500 p-2.5 rounded-2xl shadow-lg">
+                <Pill className="text-white w-6 h-6" />
               </div>
-              <div className="p-5 md:p-6">
-                <h4 className="text-lg md:text-xl font-bold text-slate-800 mb-2 group-hover:text-emerald-600 transition-colors truncate">{p.name}</h4>
-                <p className="text-slate-500 text-xs md:text-sm mb-5 flex items-start gap-2 h-10 overflow-hidden line-clamp-2"><MapPin className="w-4 h-4 flex-shrink-0 mt-0.5 text-slate-400" /> {p.address}</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setNotification({ message: 'Livraison bientôt disponible', type: 'success' })} className="flex-1 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl font-bold text-xs md:text-sm hover:bg-emerald-100 active:scale-95 transition-all">Commander</button>
-                  <button onClick={() => handleAppointment(p.id, p.name)} className="px-5 bg-slate-50 text-slate-600 py-2.5 rounded-xl font-bold text-xs md:text-sm hover:bg-slate-100 active:scale-95 transition-all">RDV</button>
-                </div>
-              </div>
+              <span className="text-3xl font-black text-white tracking-tighter">MediGo</span>
             </div>
-          ))}
+            <p className="text-slate-400 max-w-sm text-lg leading-relaxed">
+              La plateforme de référence pour l'accès aux soins de santé au Togo. Plus rapide, plus proche, plus sûr.
+            </p>
+          </div>
+          <div>
+            <h5 className="text-white font-black uppercase text-xs tracking-[0.2em] mb-8">Navigation</h5>
+            <ul className="space-y-4 text-slate-400 font-bold">
+              <li><Link href="/" className="hover:text-emerald-400 transition-colors">Accueil</Link></li>
+              <li><Link href="/commandes" className="hover:text-emerald-400 transition-colors">Mes Commandes</Link></li>
+              <li><Link href="/a-propos" className="hover:text-emerald-400 transition-colors">À Propos</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h5 className="text-white font-black uppercase text-xs tracking-[0.2em] mb-8">Légal</h5>
+            <ul className="space-y-4 text-slate-400 font-bold">
+              <li><Link href="#" className="hover:text-emerald-400 transition-colors">Confidentialité</Link></li>
+              <li><Link href="#" className="hover:text-emerald-400 transition-colors">Conditions d'utilisation</Link></li>
+            </ul>
+          </div>
         </div>
-      </section>
-
-      <footer className="bg-white border-t border-slate-100 py-12 px-4">
-        <div className="max-w-7xl mx-auto text-center text-sm text-slate-400">© 2026 MediGo. Tous droits réservés.</div>
+        <div className="max-w-7xl mx-auto mt-20 pt-8 border-t border-slate-800 text-center text-slate-500 font-bold text-sm">
+          © 2026 MediGo. Développé avec passion pour le Togo.
+        </div>
       </footer>
 
       <button onClick={() => setShowChat(!showChat)} className="fixed bottom-8 right-8 bg-emerald-600 text-white p-4 rounded-full shadow-2xl z-50">

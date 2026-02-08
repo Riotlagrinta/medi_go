@@ -1,199 +1,196 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Pill, Plus, MapPin, Phone, ShieldCheck, Trash2, Globe, Activity } from 'lucide-react';
-import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { 
+  Users, Building2, TrendingUp, ShoppingBag, 
+  CheckCircle2, XCircle, ShieldCheck, Search, 
+  MoreVertical, RefreshCw, BadgeCheck, AlertTriangle 
+} from 'lucide-react';
+import { api } from '@/lib/api';
+
+interface Stats {
+  users: number;
+  pharmacies: number;
+  orders: number;
+  revenue: number;
+}
 
 interface Pharmacy {
   id: number;
   name: string;
   address: string;
   phone: string;
-  is_on_duty: boolean;
   is_verified: boolean;
+  created_at: string;
 }
 
-export default function SuperAdmin() {
+export default function SuperAdminDashboard() {
+  const [stats, setStats] = useState<Stats | null>(null);
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newPharmacy, setNewPharmacy] = useState({ name: '', address: '', phone: '', email: '' });
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
-  const fetchPharmacies = async () => {
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase.from('pharmacies').select('*').order('name');
-      if (error) throw error;
-      setPharmacies((data as Pharmacy[]) || []);
+      const statsRes = await api.get('/admin/stats');
+      const pharmRes = await api.get('/admin/pharmacies');
+      
+      if (statsRes.ok) setStats(await statsRes.json());
+      if (pharmRes.ok) setPharmacies(await pharmRes.json());
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const toggleVerify = async (id: number, currentStatus: boolean) => {
+    try {
+      const res = await api.patch(`/admin/pharmacies/${id}/verify`, { is_verified: !currentStatus });
+      if (res.ok) {
+        setPharmacies(pharmacies.map(p => p.id === id ? { ...p, is_verified: !currentStatus } : p));
+      }
     } catch (err) {
       console.error(err);
     }
   };
 
-  useEffect(() => {
-    const checkAuth = () => {
-      const userStr = localStorage.getItem('user');
-      const user = userStr ? JSON.parse(userStr) : null;
-      if (user?.role === 'super_admin') {
-        setIsAuthorized(true);
-        fetchPharmacies();
-      } else {
-        window.location.href = '/';
-      }
-    };
-    checkAuth();
-  }, []);
-
-  const toggleStatus = async (id: number, field: 'is_verified' | 'is_on_duty', currentValue: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('pharmacies')
-        .update({ [field]: !currentValue })
-        .eq('id', id);
-      if (error) throw error;
-      fetchPharmacies();
-    } catch (err) {
-      alert("Erreur lors de la mise à jour");
-    }
-  };
-
-  const deletePharmacy = async (id: number) => {
-    if (!confirm("Supprimer définitivement cette pharmacie ?")) return;
-    try {
-      const { error } = await supabase.from('pharmacies').delete().eq('id', id);
-      if (error) throw error;
-      fetchPharmacies();
-    } catch (err) { alert("Erreur suppression"); }
-  };
-
-  const handleAddPharmacy = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const { error } = await supabase
-        .from('pharmacies')
-        .insert([{ name: newPharmacy.name, address: newPharmacy.address, phone: newPharmacy.phone }])
-        .select();
-
-      if (error) throw error;
-      alert(`Pharmacie créée !`);
-      setShowAddForm(false);
-      setNewPharmacy({ name: '', address: '', phone: '', email: '' });
-      fetchPharmacies();
-    } catch (err: unknown) {
-      if (err instanceof Error) alert(err.message);
-    }
-  };
-
-  if (!isAuthorized) return null;
+  const filteredPharmacies = pharmacies.filter(p => 
+    p.name.toLowerCase().includes(search.toLowerCase()) || 
+    p.address.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white pb-20">
-      <div className="bg-slate-900/50 backdrop-blur-xl border-b border-white/5 sticky top-0 z-30 px-4 py-4">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-emerald-500 p-2 rounded-xl shadow-lg shadow-emerald-500/20">
-              <ShieldCheck className="w-6 h-6 text-white" />
-            </div>
+    <div className="min-h-screen bg-slate-50 pb-12">
+      {/* Header */}
+      <header className="bg-slate-900 text-white pt-8 pb-24 px-4 md:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-xl font-black tracking-tight text-white">MediGo Central</h1>
-              <div className="flex gap-3 mt-1">
-                <Link href="/" className="text-[9px] font-bold text-slate-400 hover:text-emerald-500 uppercase tracking-widest transition-colors">Accueil</Link>
-                <Link href="/dashboard" className="text-[9px] font-bold text-slate-400 hover:text-emerald-500 uppercase tracking-widest transition-colors">Dashboard</Link>
-                <Link href="/profil" className="text-[9px] font-bold text-slate-400 hover:text-emerald-500 uppercase tracking-widest transition-colors">Profil</Link>
-              </div>
+              <h1 className="text-3xl font-black tracking-tight">Super Admin</h1>
+              <p className="text-slate-400 font-medium">Vue d&apos;ensemble du système MediGo</p>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => { localStorage.clear(); window.location.href = '/connexion'; }}
-              className="text-xs font-bold text-red-400 hover:text-red-300 transition-colors mr-4"
-            >
-              Déconnexion
-            </button>
-            <button 
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="bg-white text-slate-950 px-4 py-2 rounded-xl shadow-lg active:scale-95 transition-all font-black text-sm flex items-center gap-2"
-            >
-              <Plus className={`w-4 h-4 transition-transform ${showAddForm ? 'rotate-45' : ''}`} /> Pharmacie
+            <button onClick={fetchData} className="p-3 bg-slate-800 rounded-xl hover:bg-slate-700 transition-colors">
+              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
-        </div>
-      </div>
 
-      <div className="max-w-6xl mx-auto p-4 md:p-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-          <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Réseau</p>
-            <p className="text-2xl font-black">{pharmacies.length}</p>
-          </div>
-          <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">En Garde</p>
-            <p className="text-2xl font-black text-emerald-500">{pharmacies.filter(p => p.is_on_duty).length}</p>
-          </div>
-        </div>
-
-        {showAddForm && (
-          <div className="bg-slate-900 p-6 rounded-[32px] border border-white/10 mb-8 animate-in zoom-in duration-300">
-            <h2 className="text-lg font-black mb-6 flex items-center gap-2">
-              <Globe className="w-5 h-5 text-emerald-500" /> Nouvel établissement
-            </h2>
-            <form onSubmit={handleAddPharmacy} className="flex flex-col gap-4">
-              <input placeholder="Nom de la pharmacie" required value={newPharmacy.name} onChange={e => setNewPharmacy({...newPharmacy, name: e.target.value})} className="bg-white/5 border-none rounded-2xl py-4 px-6 focus:ring-2 focus:ring-emerald-500 outline-none font-bold" />
-              <input placeholder="Email gérant" type="email" required value={newPharmacy.email} onChange={e => setNewPharmacy({...newPharmacy, email: e.target.value})} className="bg-white/5 border-none rounded-2xl py-4 px-6 focus:ring-2 focus:ring-emerald-500 outline-none font-bold" />
-              <input placeholder="Téléphone" required value={newPharmacy.phone} onChange={e => setNewPharmacy({...newPharmacy, phone: e.target.value})} className="bg-white/5 border-none rounded-2xl py-4 px-6 focus:ring-2 focus:ring-emerald-500 outline-none font-bold" />
-              <input placeholder="Adresse" required value={newPharmacy.address} onChange={e => setNewPharmacy({...newPharmacy, address: e.target.value})} className="bg-white/5 border-none rounded-2xl py-4 px-6 focus:ring-2 focus:ring-emerald-500 outline-none font-bold" />
-              <button type="submit" className="bg-emerald-500 text-slate-950 py-4 rounded-2xl font-black shadow-lg shadow-emerald-500/20 active:scale-95 transition-all mt-2">
-                Créer l&apos;accès
-              </button>
-            </form>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {pharmacies.map(p => (
-            <div key={p.id} className="bg-slate-900/50 p-5 rounded-[28px] border border-white/5 hover:border-emerald-500/30 transition-all group">
-              <div className="flex justify-between items-start mb-6">
-                <div className="bg-slate-800 p-3 rounded-2xl group-hover:bg-emerald-500 transition-colors">
-                  <Pill className="text-emerald-500 group-hover:text-slate-900 w-6 h-6 transition-colors" />
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Utilisateurs', value: stats?.users || 0, icon: <Users className="text-blue-400" />, change: "+12%" },
+              { label: 'Pharmacies', value: stats?.pharmacies || 0, icon: <Building2 className="text-emerald-400" />, change: "+3" },
+              { label: 'Commandes', value: stats?.orders || 0, icon: <ShoppingBag className="text-purple-400" />, change: "+8%" },
+              { label: 'Volume (F CFA)', value: (stats?.revenue || 0).toLocaleString(), icon: <TrendingUp className="text-amber-400" />, change: "+24%" },
+            ].map((stat, idx) => (
+              <div key={idx} className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-slate-700/50 rounded-xl">{stat.icon}</div>
+                  <span className="text-xs font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-lg">{stat.change}</span>
                 </div>
-                <button 
-                  onClick={() => deletePharmacy(p.id)}
-                  className="p-2 text-slate-600 hover:text-red-500 active:scale-90 transition-all"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+                <h3 className="text-3xl font-black mb-1">{stat.value}</h3>
+                <p className="text-slate-400 text-sm font-medium">{stat.label}</p>
               </div>
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="font-black text-lg tracking-tight">{p.name}</h3>
-                {p.is_verified && <ShieldCheck className="w-4 h-4 text-blue-500 fill-blue-500/20" />}
-              </div>
-              <div className="space-y-2 mb-6">
-                <p className="flex items-center gap-2 text-xs font-bold text-slate-500"><MapPin className="w-3.5 h-3.5" /> {p.address}</p>
-                <p className="flex items-center gap-2 text-xs font-bold text-slate-500"><Phone className="w-3.5 h-3.5" /> {p.phone}</p>
-              </div>
-              <div className="pt-4 border-t border-white/5 flex flex-wrap gap-2 justify-between items-center">
-                <button 
-                  onClick={() => toggleStatus(p.id, 'is_on_duty', p.is_on_duty)}
-                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
-                    p.is_on_duty ? 'bg-red-500 text-white animate-pulse' : 'bg-white/5 text-slate-400'
-                  }`}
-                >
-                  {p.is_on_duty ? 'En Garde' : 'Mettre de Garde'}
-                </button>
-                <button 
-                  onClick={() => toggleStatus(p.id, 'is_verified', p.is_verified)}
-                  className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
-                    p.is_verified ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-400'
-                  }`}
-                >
-                  {p.is_verified ? 'Certifiée' : 'Certifier'}
-                </button>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
-    </main>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 md:px-8 -mt-12">
+        <div className="bg-white rounded-[32px] shadow-xl border border-slate-100 overflow-hidden">
+          <div className="p-6 md:p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+            <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-emerald-600" />
+              Gestion des Pharmacies
+            </h2>
+            <div className="relative w-full md:w-96">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <input 
+                type="text" 
+                placeholder="Rechercher une pharmacie..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-slate-50 border-none rounded-xl py-3 pl-12 pr-4 font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50 text-slate-500 text-xs font-black uppercase tracking-wider">
+                <tr>
+                  <th className="px-6 py-4">Pharmacie</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4">Contact</th>
+                  <th className="px-6 py-4">Date d&apos;ajout</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredPharmacies.map((pharmacy) => (
+                  <tr key={pharmacy.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-black">
+                          {pharmacy.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 flex items-center gap-1">
+                            {pharmacy.name}
+                            {pharmacy.is_verified && <BadgeCheck className="w-4 h-4 text-blue-500 fill-blue-50" />}
+                          </p>
+                          <p className="text-xs text-slate-500 truncate max-w-[200px]">{pharmacy.address}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {pharmacy.is_verified ? (
+                        <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-black flex items-center gap-1 w-fit">
+                          <CheckCircle2 className="w-3 h-3" /> Vérifiée
+                        </span>
+                      ) : (
+                        <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-black flex items-center gap-1 w-fit">
+                          <AlertTriangle className="w-3 h-3" /> En attente
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-600">
+                      {pharmacy.phone || 'Non renseigné'}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-600">
+                      {new Date(pharmacy.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => toggleVerify(pharmacy.id, pharmacy.is_verified)}
+                        className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${
+                          pharmacy.is_verified 
+                            ? 'bg-red-50 text-red-600 hover:bg-red-100' 
+                            : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200'
+                        }`}
+                      >
+                        {pharmacy.is_verified ? 'Révoquer' : 'Valider'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredPharmacies.length === 0 && (
+              <div className="p-12 text-center text-slate-400">
+                <Building2 className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                <p>Aucune pharmacie trouvée.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }

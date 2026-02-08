@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CreditCard, Smartphone, CheckCircle2, Loader2, ShieldCheck, Pill, Lock, Info, Truck } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { api } from '@/lib/api';
 
 interface OrderItem {
   name: string;
@@ -11,33 +13,40 @@ interface OrderItem {
 }
 
 export default function Paiement() {
+  const searchParams = useSearchParams();
   const [method, setMethod] = useState<'tmoney' | 'flooz' | 'delivery' | 'card' | null>(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // 1: Method, 2: Details, 3: Success
   const [phoneNumber, setPhoneNumber] = useState('');
   const [orderSummary, setOrderSummary] = useState<OrderItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [reservationId, setReservationId] = useState<number | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const initOrder = () => {
+    const resId = searchParams.get('reservation_id');
+    const amt = searchParams.get('amount');
+    
+    if (resId && amt) {
+      setReservationId(parseInt(resId));
+      setTotal(parseInt(amt));
+      // Optionnel: Récupérer les détails de la réservation depuis l'API pour le résumé
+    } else {
+      // Fallback mock
       const mockOrder = [
-        { name: 'Paracétamol 500mg', price: 1500, quantity: 1 },
-        { name: 'Sirop Humex', price: 2000, quantity: 1 }
+        { name: 'Commande Pharmacie', price: parseInt(amt || '0'), quantity: 1 }
       ];
       setOrderSummary(mockOrder);
-      setTotal(mockOrder.reduce((acc, item) => acc + (item.price * item.quantity), 0));
-    };
-    initOrder();
-  }, []);
+      if (amt) setTotal(parseInt(amt));
+    }
+  }, [searchParams]);
 
   const validateTogoNumber = (num: string) => {
-    // Togo numbers: 90, 91, 92, 93 (Togocom) or 96, 97, 98, 99, 70 (Moov) + 6 digits
     const regex = /^(90|91|92|93|96|97|98|99|70)\d{6}$/;
     return regex.test(num.replace(/\s/g, ''));
   };
 
-  const handlePayment = (e: React.FormEvent) => {
+  const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -47,10 +56,36 @@ export default function Paiement() {
     }
 
     setLoading(true);
-    setTimeout(() => {
+
+    try {
+      if (method === 'delivery') {
+        // Simuler succès direct pour livraison
+        setTimeout(() => { setLoading(false); setStep(3); }, 1500);
+        return;
+      }
+
+      const response = await api.post('/payments/initialize', {
+        reservation_id: reservationId,
+        amount: total,
+        payment_method: method,
+        phone: phoneNumber
+      });
+
+      if (!response.ok) throw new Error('Erreur lors de l\'initialisation du paiement');
+
+      const data = await response.json();
+      
+      // Redirection vers le guichet de paiement (FedaPay)
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        setStep(3);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Une erreur est survenue.');
+    } finally {
       setLoading(false);
-      setStep(3);
-    }, 2500);
+    }
   };
 
   if (step === 3) {
