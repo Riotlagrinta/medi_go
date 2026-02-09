@@ -460,7 +460,7 @@ export default function Home() {
                   onChange={(e) => setQuery(e.target.value)} 
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()} 
                   placeholder={searchType === 'medication' ? "Ex: Paracétamol, Insuline..." : "Rechercher une pharmacie..."} 
-                  className="w-full focus:outline-none text-slate-900 font-bold bg-transparent text-lg placeholder:text-slate-300" 
+                  className="w-full focus:outline-none text-slate-900 font-bold bg-transparent text-lg placeholder:text-slate-400" 
                 />
               </div>
               <div className="flex-1 flex items-center px-6 py-4 gap-4 bg-slate-50 rounded-[24px] group focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
@@ -469,7 +469,7 @@ export default function Home() {
                   type="text" 
                   value={location} 
                   onChange={(e) => setLocation(e.target.value)} 
-                  className="w-full focus:outline-none text-slate-900 font-bold bg-transparent text-lg" 
+                  className="w-full focus:outline-none text-slate-900 font-bold bg-transparent text-lg placeholder:text-slate-400" 
                 />
               </div>
             </div>
