@@ -64,4 +64,36 @@ router.patch('/pharmacies/:id/verify', async (req: Request, res: Response) => {
   }
 });
 
+// Lister tous les utilisateurs
+router.get('/users', async (req: Request, res: Response) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*, pharmacies(name)')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur liste utilisateurs' });
+  }
+});
+
+// Modifier le rôle et la pharmacie d'un utilisateur
+router.patch('/users/:id/role', async (req: Request, res: Response) => {
+  try {
+    const { role, pharmacy_id } = req.body;
+    const { data, error } = await supabase
+      .from('users')
+      .update({ role, pharmacy_id })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur mise à jour rôle' });
+  }
+});
+
 export default router;
