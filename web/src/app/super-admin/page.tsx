@@ -42,13 +42,37 @@ export default function SuperAdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [authorized, setAuthorized] = useState(false);
+
+  const checkAuth = async () => {
+    try {
+      const res = await api.get('/auth/me');
+      if (res.ok) {
+        const user = await res.json();
+        if (user.role === 'super_admin') {
+          setAuthorized(true);
+          fetchData();
+        } else {
+          window.location.href = '/dashboard';
+        }
+      } else {
+        window.location.href = '/connexion';
+      }
+    } catch (err) {
+      window.location.href = '/connexion';
+    }
+  };
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const statsRes = await api.get('/admin/stats');
-      const pharmRes = await api.get('/admin/pharmacies');
-      const usersRes = await api.get('/admin/users');
+      const pharmRes = await api.get(`/admin/pharmacies?q=${search}`);
+      const usersRes = await api.get(`/admin/users?q=${search}`);
       
       if (statsRes.ok) setStats(await statsRes.json());
       if (pharmRes.ok) setPharmacies(await pharmRes.json());
@@ -61,8 +85,25 @@ export default function SuperAdminDashboard() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    const delayDebounce = setTimeout(() => {
+      if (authorized) fetchData();
+    }, 500);
+    return () => clearTimeout(delayDebounce);
+  }, [search, authorized]);
+
+  if (!authorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-slate-900"></div>
+      </div>
+    );
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/connexion';
+  };
 
   const toggleVerify = async (id: number, currentStatus: boolean) => {
     try {
@@ -86,9 +127,7 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  const filteredData = activeTab === 'pharmacies' 
-    ? pharmacies.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
-    : users.filter(u => u.full_name?.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
+  const filteredData = activeTab === 'pharmacies' ? pharmacies : users;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-12">
@@ -100,9 +139,14 @@ export default function SuperAdminDashboard() {
               <h1 className="text-3xl font-black tracking-tight">Super Admin</h1>
               <p className="text-slate-400 font-medium">Gestion centrale de MediGo</p>
             </div>
-            <button onClick={fetchData} className="p-3 bg-slate-800 rounded-xl hover:bg-slate-700 transition-colors">
-              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="flex gap-4">
+              <button onClick={handleLogout} className="px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-xl transition-all font-bold text-sm">
+                Déconnexion
+              </button>
+              <button onClick={fetchData} className="p-3 bg-slate-800 rounded-xl hover:bg-slate-700 transition-colors">
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

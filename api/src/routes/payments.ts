@@ -11,7 +11,18 @@ const paymentInitSchema = z.object({
   reservation_id: z.number().positive(),
   amount: z.number().positive(),
   payment_method: z.enum(['tmoney', 'flooz', 'card']),
-  phone: z.string().optional() // Requis pour T-Money/Flooz
+  phone: z.string().optional() 
+}).refine((data) => {
+  if (['tmoney', 'flooz'].includes(data.payment_method)) {
+    if (!data.phone) return false;
+    // Regex Togo: 8 chiffres commençant par 90-93, 96-99, 70
+    const togoRegex = /^(90|91|92|93|96|97|98|99|70)\d{6}$/;
+    return togoRegex.test(data.phone.replace(/\s/g, ''));
+  }
+  return true;
+}, {
+  message: "Un numéro Togo valide est requis pour ce mode de paiement",
+  path: ["phone"]
 });
 
 router.post('/initialize', authenticateJWT, async (req: AuthRequest, res: Response) => {
@@ -55,7 +66,13 @@ router.post('/initialize', authenticateJWT, async (req: AuthRequest, res: Respon
 
 // Webhook pour recevoir les confirmations de FedaPay
 router.post('/webhook', async (req: Request, res: Response) => {
-  const { id, status, entity } = req.body; // Structure typique FedaPay
+  // TODO: Vérifier la signature FedaPay pour des raisons de sécurité !
+  // const sig = req.headers['x-fedapay-signature'];
+  // if (!verifySignature(req.body, sig, FEDAPAY_WEBHOOK_SECRET)) {
+  //   return res.status(401).send('Invalid signature');
+  // }
+
+  const { id, status, entity } = req.body; 
   
   try {
     // Mise à jour du statut dans notre DB

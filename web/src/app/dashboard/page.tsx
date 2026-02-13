@@ -20,13 +20,30 @@ export default function PharmacieDashboard() {
   const [report, setReport] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [pharmacyName, setPharmacyName] = useState('Ma Pharmacie');
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      setPharmacyName(user.pharmacy_name || 'Ma Pharmacie');
-    }
+    const checkAuth = async () => {
+      try {
+        const res = await api.get('/auth/me');
+        if (res.ok) {
+          const user = await res.json();
+          if (user.role === 'pharmacy_admin' || user.role === 'super_admin') {
+            setPharmacyName(user.pharmacy_name || 'Ma Pharmacie');
+            // Mettre à jour le localStorage avec les données fraîches (optionnel mais recommandé)
+            localStorage.setItem('user', JSON.stringify(user));
+            setAuthorized(true);
+            fetchReport();
+          } else {
+            window.location.href = '/profil';
+          }
+        } else {
+          window.location.href = '/connexion';
+        }
+      } catch (err) {
+        window.location.href = '/connexion';
+      }
+    };
 
     const fetchReport = async () => {
       try {
@@ -39,8 +56,16 @@ export default function PharmacieDashboard() {
       }
     };
 
-    fetchReport();
+    checkAuth();
   }, []);
+
+  if (!authorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
 
   const handlePrint = () => {
     window.print();

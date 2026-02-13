@@ -26,10 +26,11 @@ export default function Stocks() {
   const [pharmacyId, setPharmacyId] = useState<number | null>(null);
   const [pharmacyName, setPharmacyName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [authorized, setAuthorized] = useState(false);
 
-  const fetchStocks = async (id: number) => {
+  const fetchStocks = async (id: number, query = '') => {
     try {
-      const response = await api.get(`/pharmacies/${id}/stocks`);
+      const response = await api.get(`/pharmacies/${id}/stocks?q=${query}`);
       const data = await response.json();
       setStocks(Array.isArray(data) ? (data as StockItem[]) : []);
     } catch (error) {
@@ -49,24 +50,44 @@ export default function Stocks() {
   };
 
   useEffect(() => {
-    const init = () => {
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        setPharmacyName(user.pharmacy_name);
-        setPharmacyId(user.pharmacy_id);
-        fetchStocks(user.pharmacy_id);
-        fetchAllMedications();
+    const checkAuth = async () => {
+      try {
+        const res = await api.get('/auth/me');
+        if (res.ok) {
+          const user = await res.json();
+          if (user.role === 'pharmacy_admin' || user.role === 'super_admin') {
+            setPharmacyName(user.pharmacy_name);
+            setPharmacyId(user.pharmacy_id);
+            setAuthorized(true);
+            fetchStocks(user.pharmacy_id);
+            fetchAllMedications();
+          } else {
+            window.location.href = '/';
+          }
+        } else {
+          window.location.href = '/connexion';
+        }
+      } catch (err) {
+        window.location.href = '/connexion';
       }
     };
-    init();
+    checkAuth();
   }, []);
+
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      if (authorized && pharmacyId) {
+        fetchStocks(pharmacyId, searchQuery);
+      }
+    }, 500);
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery, authorized, pharmacyId]);
 
   const deleteStock = async (stockId: number) => {
     if (!confirm("Supprimer ce médicament ?")) return;
     try {
       const response = await api.delete(`/stocks/${stockId}`);
-      if (response.ok && pharmacyId) fetchStocks(pharmacyId);
+      if (response.ok && pharmacyId) fetchStocks(pharmacyId, searchQuery);
     } catch (error) { console.error(error); }
   };
 
@@ -82,12 +103,14 @@ export default function Stocks() {
       });
       if (response.ok) {
         setShowAddForm(false);
-        if (pharmacyId) fetchStocks(pharmacyId);
+        if (pharmacyId) fetchStocks(pharmacyId, searchQuery);
       }
     } catch (error) { console.error(error); }
   };
 
-  const filteredStocks = stocks.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  if (!authorized) return null;
+
+  const filteredStocks = stocks;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24 md:pb-8">

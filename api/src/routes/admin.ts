@@ -38,7 +38,14 @@ router.get('/stats', async (req: Request, res: Response) => {
 // Lister toutes les pharmacies (y compris celles non vérifiées)
 router.get('/pharmacies', async (req: Request, res: Response) => {
   try {
-    const { data, error } = await supabase.from('pharmacies').select('*').order('created_at', { ascending: false });
+    const { q } = req.query;
+    let queryBuilder = supabase.from('pharmacies').select('*');
+    
+    if (q) {
+      queryBuilder = queryBuilder.ilike('name', `%${q}%`);
+    }
+
+    const { data, error } = await queryBuilder.order('created_at', { ascending: false });
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -67,10 +74,16 @@ router.patch('/pharmacies/:id/verify', async (req: Request, res: Response) => {
 // Lister tous les utilisateurs
 router.get('/users', async (req: Request, res: Response) => {
   try {
-    const { data, error } = await supabase
+    const { q } = req.query;
+    let queryBuilder = supabase
       .from('users')
-      .select('*, pharmacies(name)')
-      .order('created_at', { ascending: false });
+      .select('id, email, full_name, role, pharmacy_id, created_at, pharmacies(name)');
+    
+    if (q) {
+      queryBuilder = queryBuilder.or(`full_name.ilike.%${q}%,email.ilike.%${q}%`);
+    }
+
+    const { data, error } = await queryBuilder.order('created_at', { ascending: false });
     if (error) throw error;
     res.json(data);
   } catch (err) {

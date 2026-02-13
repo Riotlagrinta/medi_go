@@ -37,7 +37,11 @@ router.post('/login', async (req: Request, res: Response) => {
 
 router.get('/me', authenticateJWT, async (req: AuthRequest, res: Response) => {
   try {
-    const { data: user, error } = await supabase.from('users').select('*').eq('id', req.user.id).single();
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, email, full_name, role, pharmacy_id, phone, address, medical_info, photo_url, created_at')
+      .eq('id', req.user.id)
+      .single();
     if (error || !user) return res.status(404).json({ error: 'Session invalide' });
     res.json(user);
   } catch (err) {
@@ -45,10 +49,20 @@ router.get('/me', authenticateJWT, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/sync-profile', async (req: Request, res: Response) => {
-  const { email, full_name, phone, address, medical_info, role, pharmacy_id } = req.body;
+router.post('/sync-profile', authenticateJWT, async (req: AuthRequest, res: Response) => {
+  const { full_name, phone, address, medical_info } = req.body;
+  const email = req.user.email; // Use email from JWT to ensure it's the owner
+
   try {
-    const { data, error } = await supabase.from('users').upsert({ email, full_name, phone, address, medical_info, role, pharmacy_id }, { onConflict: 'email' }).select().single();
+    // Regular users can only update their own basic info.
+    // They CANNOT update their role or pharmacy_id via this endpoint.
+    const { data, error } = await supabase
+      .from('users')
+      .update({ full_name, phone, address, medical_info })
+      .eq('id', req.user.id)
+      .select()
+      .single();
+
     if (error) throw error;
     res.json(data);
   } catch (err) {

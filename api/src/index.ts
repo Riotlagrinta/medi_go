@@ -8,6 +8,6 @@ const PORT = process.env.PORT || 3001;
 
 const httpServer = initSocket(app);
 
-httpServer.listen(PORT, () => {
-  console.log(`Server (HTTP + WebSocket) is running on http://localhost:${PORT}`);
+httpServer.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(`Server (HTTP + WebSocket) is running on http://0.0.0.0:${PORT}`);
 });

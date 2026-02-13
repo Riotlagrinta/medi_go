@@ -36,6 +36,9 @@ router.get('/', authenticateJWT, async (req: AuthRequest, res: Response) => {
       q = q.eq('pharmacy_id', req.user.pharmacy_id);
     } else if (req.user.role === 'patient') {
       q = q.eq('patient_id', req.user.id);
+    } else if (req.user.role !== 'super_admin') {
+      // Sécurité: Si rôle inconnu ou non autorisé, on ne renvoie rien
+      return res.json([]);
     }
 
     const { data, error } = await q.order('created_at', { ascending: false });
@@ -59,6 +62,7 @@ router.patch('/:id/status', authenticateJWT, async (req: AuthRequest, res: Respo
       .from('prescriptions')
       .update({ status })
       .eq('id', id)
+      .eq('pharmacy_id', req.user.pharmacy_id) // Isolation stricte
       .select()
       .single();
 
