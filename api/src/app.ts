@@ -14,6 +14,7 @@ import prescriptionRoutes from './routes/prescriptions.js';
 import adminRoutes from './routes/admin.js';
 import deliveryRoutes from './routes/delivery.js';
 import reportRoutes from './routes/reports.js';
+import appConfigRoutes from './routes/app_config.js';
 import { authenticateJWT, authorizeRoles } from './middleware/auth.js';
 
 export const app = express();
@@ -52,6 +53,7 @@ app.use('/api/prescriptions', authenticateJWT, prescriptionRoutes);
 app.use('/api/admin', authenticateJWT, authorizeRoles('super_admin'), adminRoutes);
 app.use('/api/delivery', authenticateJWT, deliveryRoutes);
 app.use('/api/reports', authenticateJWT, authorizeRoles('super_admin', 'pharmacy_admin'), reportRoutes);
+app.use('/api', appConfigRoutes); // Pour /api/version
 
 // Health check
 app.get('/api/health', (req: Request, res: Response) => {
