@@ -5,7 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 // Pour un appareil physique : utilise l'IP de ton PC (ex: 192.168.1.XX)
 // En production : utilise l'URL Render
 const DEV_API_URL = 'http://192.168.1.70:3001/api'; 
-const PROD_API_URL = 'https://medigo-api-vxrv.onrender.com';
+const PROD_API_URL = 'https://medigo-api-vxrv.onrender.com/api';
 
 // Changer cette variable pour basculer entre DEV et PROD
 const IS_DEV = false; 

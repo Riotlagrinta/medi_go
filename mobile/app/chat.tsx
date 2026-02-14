@@ -5,7 +5,7 @@ import { Send, ArrowLeft, Phone, Info } from 'lucide-react-native';
 import { io } from 'socket.io-client';
 import { apiFetch, getUser } from '../services/api';
 
-const SOCKET_URL = 'https://medigo-api-vxrv.onrender.com'; // URL de l'API en production
+const SOCKET_URL = 'https://medigo-api-vxrv.onrender.com'; // Base URL for Socket.io
 
 export default function ChatScreen() {
   const { pharmacyId, pharmacyName } = useLocalSearchParams();
