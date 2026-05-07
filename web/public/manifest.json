@@ -1,0 +1,23 @@
+{
+  "name": "MediGo Togo",
+  "short_name": "MediGo",
+  "description": "ERP Pharmaceutique - Votre santé en un clic au Togo",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#059669",
+  "icons": [
+    {
+      "src": "/window.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/window.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

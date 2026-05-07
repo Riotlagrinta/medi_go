@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+
+# Expo / React Native
+.expo/
+dist/
+mobile/.expo/
+mobile/node_modules/
+
+# Flutter
+mobile_flutter/.dart_tool/
+mobile_flutter/build/
+mobile_flutter/.flutter-plugins
+mobile_flutter/.flutter-plugins-dependencies
+
+# Environment files (SECRETS - ne jamais pousser)
+.env
+.env.local
+.env*.local
+backend/.env
+
+# Build outputs
+build/
+uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Backend node_modules (inutile sur Vercel)
+backend/node_modules/
+backend/uploads/

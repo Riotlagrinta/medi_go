@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "MediGo",
+    "slug": "medigo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "medigo",
+    "splash": {
+      "backgroundColor": "#059669"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "tg.medigo.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#059669"
+      },
+      "package": "tg.medigo.app",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "CAMERA", "READ_EXTERNAL_STORAGE"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        { "locationAlwaysAndWhenInUsePermission": "MediGo a besoin de votre position pour trouver les pharmacies proches." }
+      ],
+      [
+        "expo-image-picker",
+        { "photosPermission": "MediGo a besoin d'accéder à vos photos pour envoyer vos ordonnances." }
+      ]
+    ],
+    "extra": {
+      "router": { "origin": false }
+    }
+  }
+}
