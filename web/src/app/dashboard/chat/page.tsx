@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, User, ArrowLeft, Pill, Smile } from 'lucide-react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-
 import { api } from '@/lib/api';
 
 interface Message {

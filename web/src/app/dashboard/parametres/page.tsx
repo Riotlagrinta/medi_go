@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Phone, Mail, Lock, ArrowLeft, Pill, ShieldCheck, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 
 export default function Parametres() {
   const [pharmacyName, setPharmacyName] = useState('');
@@ -25,16 +25,12 @@ export default function Parametres() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (newEmail !== email) {
-        const { error } = await supabase.auth.updateUser({ email: newEmail });
-        if (error) throw error;
-        alert("Email de confirmation envoyé.");
-      }
-      if (newPassword) {
-        const { error } = await supabase.auth.updateUser({ password: newPassword });
-        if (error) throw error;
-        alert("Mot de passe mis à jour.");
-      }
+      const res = await api.patch('/auth/profile', {
+        ...(newEmail !== email ? { email: newEmail } : {}),
+        ...(newPassword ? { password: newPassword } : {}),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      alert('Modifications sauvegardées.');
       setNewPassword('');
     } catch (error: unknown) {
       if (error instanceof Error) alert(error.message);
