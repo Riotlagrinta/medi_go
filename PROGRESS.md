@@ -1,6 +1,6 @@
 # MediGo — Journal de Progression
 
-## Statut Global : 🟡 En cours — Infrastructure complète, fonctionnalités à finaliser
+## Statut Global : 🟢 En ligne — https://medi-go-murex.vercel.app
 
 ---
 
@@ -77,16 +77,13 @@
 
 ---
 
-## 🔴 PHASE 2 — Déploiement Vercel (À FAIRE)
+## ✅ PHASE 2 — Déploiement Vercel (TERMINÉE)
 
-- [ ] Créer un repo GitHub et pousser le code
-- [ ] Connecter le repo à Vercel
-- [ ] Configurer les variables d'environnement sur Vercel :
-  - `DATABASE_URL`
-  - `JWT_SECRET`
-  - `BLOB_READ_WRITE_TOKEN`
-- [ ] Vérifier le premier déploiement Vercel
-- [ ] Mettre l'URL Vercel dans `mobile/src/lib/api.ts`
+- [x] Repo GitHub : https://github.com/Riotlagrinta/medi_go
+- [x] Connecté à Vercel
+- [x] Variables d'environnement configurées (DATABASE_URL, JWT_SECRET)
+- [x] Déploiement réussi — https://medi-go-murex.vercel.app
+- [x] URL Vercel mise dans `mobile/src/lib/api.ts`
 
 ---
 

@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 
 // ⬇️ Remplacer par votre URL Vercel après déploiement
-export const API_URL = 'https://votre-projet.vercel.app/api';
+export const API_URL = 'https://medi-go-murex.vercel.app/api';
 
 async function getToken(): Promise<string | null> {
   return SecureStore.getItemAsync('token');
