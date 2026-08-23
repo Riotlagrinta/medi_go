@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Clock, Calendar, Pill, Phone, Loader2, MessageCircle, X, Send, Camera, ShieldCheck, Heart, User, LogOut, Info, Navigation } from 'lucide-react';
+import { Search, MapPin, Clock, Calendar, Pill, Phone, Loader2, MessageCircle, X, Send, Camera, ShieldCheck, Heart, User, LogOut, Info, Navigation, Smartphone, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -32,11 +32,18 @@ const LandingPage = () => (
             <div className="bg-emerald-600 p-2 rounded-lg"><Pill className="text-white w-6 h-6" /></div>
             <span className="text-2xl font-bold text-slate-800">MediGo</span>
           </div>
-          <Link href="/a-propos" className="hidden md:block text-slate-500 font-semibold hover:text-emerald-600 transition-colors">
+          <Link href="/telecharger" className="hidden md:flex items-center gap-1.5 text-slate-600 font-bold hover:text-emerald-600 transition-colors text-sm">
+            <Smartphone className="w-4 h-4 text-emerald-600" />
+            App Mobile
+          </Link>
+          <Link href="/a-propos" className="hidden md:block text-slate-500 font-semibold hover:text-emerald-600 transition-colors text-sm">
             À Propos
           </Link>
         </div>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-3">
+          <Link href="/telecharger" className="md:hidden p-2 rounded-full bg-emerald-50 text-emerald-600" title="Télécharger l'application">
+            <Download className="w-5 h-5" />
+          </Link>
           <Link href="/connexion" className="px-5 py-2 font-semibold text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors">
             Se connecter
           </Link>
@@ -64,13 +71,14 @@ const LandingPage = () => (
         <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-12 leading-relaxed">
           MediGo simplifie votre accès aux soins. Localisez les pharmacies de garde, vérifiez la disponibilité de vos médicaments et consultez des experts, le tout depuis votre mobile.
         </p>
-        <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
-          <Link href="/inscription" className="w-full md:w-auto px-8 py-4 bg-emerald-600 text-white font-bold text-lg rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <Link href="/inscription" className="w-full sm:w-auto px-8 py-4 bg-emerald-600 text-white font-bold text-lg rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2">
             <User className="w-5 h-5" />
             Créer mon compte patient
           </Link>
-          <Link href="/connexion" className="w-full md:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 font-bold text-lg rounded-full hover:bg-slate-50 transition-all">
-            Déjà membre ?
+          <Link href="/telecharger" className="w-full sm:w-auto px-8 py-4 bg-slate-900 text-white font-bold text-lg rounded-full shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+            <Smartphone className="w-5 h-5 text-emerald-400" />
+            Installer l&apos;application
           </Link>
         </div>
       </div>
@@ -503,6 +511,10 @@ export default function Home() {
           <nav className="hidden lg:flex items-center gap-1 bg-slate-100/50 p-1.5 rounded-2xl border border-slate-200/50">
             <Link href="/" className="px-6 py-2 rounded-xl bg-white shadow-sm text-emerald-600 font-bold text-sm">Accueil</Link>
             <Link href="/commandes" className="px-6 py-2 rounded-xl text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors">Commandes</Link>
+            <Link href="/telecharger" className="px-6 py-2 rounded-xl text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors flex items-center gap-1.5">
+              <Smartphone className="w-4 h-4 text-emerald-600" />
+              App Mobile
+            </Link>
             <Link href="/a-propos" className="px-6 py-2 rounded-xl text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors">Aide</Link>
           </nav>
 
@@ -824,6 +836,7 @@ export default function Home() {
             <h5 className="text-white font-black uppercase text-xs tracking-[0.2em] mb-8">Navigation</h5>
             <ul className="space-y-4 text-slate-400 font-bold">
               <li><Link href="/" className="hover:text-emerald-400 transition-colors">Accueil</Link></li>
+              <li><Link href="/telecharger" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5"><Smartphone className="w-3.5 h-3.5 text-emerald-400" /> Installer l&apos;application</Link></li>
               <li><Link href="/commandes" className="hover:text-emerald-400 transition-colors">Mes Commandes</Link></li>
               <li><Link href="/a-propos" className="hover:text-emerald-400 transition-colors">À Propos</Link></li>
             </ul>
