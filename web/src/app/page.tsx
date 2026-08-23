@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Clock, Calendar, Pill, Phone, Loader2, MessageCircle, X, Send, Camera, ShieldCheck, Heart, User, LogOut, Info } from 'lucide-react';
+import { Search, MapPin, Clock, Calendar, Pill, Phone, Loader2, MessageCircle, X, Send, Camera, ShieldCheck, Heart, User, LogOut, Info, Navigation } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -177,9 +177,21 @@ export default function Home() {
 
   const [query, setQuery] = useState('');
   const [searchType, setSearchType] = useState<'medication' | 'pharmacy'>('medication');
-  const [location, setLocation] = useState('Lomé, Togo');
+  const [location, setLocation] = useState('📍 Détection de votre position...');
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [nearbyPharmacies, setNearbyPharmacies] = useState<{ id: number, name: string, address: string, distance: number }[]>([]);
+  const [nearbyPharmacies, setNearbyPharmacies] = useState<{ 
+    id: number; 
+    name: string; 
+    address: string; 
+    phone: string;
+    is_on_duty: boolean;
+    is_verified: boolean;
+    lat: number;
+    lng: number;
+    distance: number;
+  }[]>([]);
   const [searched, setSearched] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -196,9 +208,9 @@ export default function Home() {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
       if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        setIsVisible(false); // On descend -> on cache
+        setIsVisible(false);
       } else {
-        setIsVisible(true); // On monte -> on montre
+        setIsVisible(true);
       }
       setLastScrollY(currentScrollY);
     };
@@ -218,7 +230,7 @@ export default function Home() {
       });
       if (response.ok) {
         setChatMessage('');
-        fetchMsgs(); // Refresh messages
+        fetchMsgs();
       }
     } catch {
       console.error('Chat failed');
@@ -246,35 +258,65 @@ export default function Home() {
     }
   }, [showChat, !!user]);
 
-  // Récupère les pharmacies à proximité une fois l'utilisateur connecté
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchNearby = async (lat: number, lng: number) => {
-      try {
-        const response = await api.get(`/search?q=&lat=${lat}&lng=${lng}&radius=10000`);
+  // Récupère les pharmacies à proximité en temps réel
+  const fetchNearby = async (lat: number, lng: number) => {
+    try {
+      const response = await api.get(`/pharmacies?lat=${lat}&lng=${lng}`);
+      if (response.ok) {
         const data = await response.json();
-        if (Array.isArray(data)) {
-          const uniquePharmacies = Array.from(new Set(data.map((r: any) => r.pharmacy_id)))
-            .map(id => {
-              const r = data.find((x: any) => x.pharmacy_id === id);
-              return { id: r.pharmacy_id, name: r.pharmacy_name, address: r.address, distance: r.distance };
-            });
-          setNearbyPharmacies(uniquePharmacies);
-        } else {
-          setNearbyPharmacies([]);
-        }
-      } catch {
+        setNearbyPharmacies(Array.isArray(data) ? data : []);
+      } else {
         setNearbyPharmacies([]);
       }
-    };
+    } catch {
+      setNearbyPharmacies([]);
+    }
+  };
+
+  // Géolocalisation GPS de l'utilisateur
+  const getUserLocation = (showNotif = false) => {
+    setIsLocating(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (p) => fetchNearby(p.coords.latitude, p.coords.longitude),
-        () => fetchNearby(6.1372, 1.2255)
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setUserCoords({ lat, lng });
+          setLocation('📍 Position GPS actuelle');
+          setIsLocating(false);
+          fetchNearby(lat, lng);
+          if (showNotif) {
+            setNotification({ message: 'Position actualisée avec succès !', type: 'success' });
+          }
+        },
+        (error) => {
+          console.warn('Geolocation denied or failed, fallback to Lomé:', error);
+          const defaultLat = 6.1372;
+          const defaultLng = 1.2255;
+          setUserCoords({ lat: defaultLat, lng: defaultLng });
+          setLocation('Lomé, Togo (défaut)');
+          setIsLocating(false);
+          fetchNearby(defaultLat, defaultLng);
+          if (showNotif) {
+            setNotification({ message: 'GPS indisponible. Localisation par défaut (Lomé).', type: 'error' });
+          }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
-    } else { fetchNearby(6.1372, 1.2255); }
-  }, [user]);
+    } else {
+      const defaultLat = 6.1372;
+      const defaultLng = 1.2255;
+      setUserCoords({ lat: defaultLat, lng: defaultLng });
+      setLocation('Lomé, Togo (défaut)');
+      setIsLocating(false);
+      fetchNearby(defaultLat, defaultLng);
+    }
+  };
+
+  // Déclencher la géolocalisation dès le chargement
+  useEffect(() => {
+    getUserLocation();
+  }, []);
 
   // Gère la disparition automatique des notifications
   useEffect(() => {
@@ -285,19 +327,49 @@ export default function Home() {
   }, [notification]);
 
   const handleSearch = async () => {
-    if (!query) return;
+    if (!query.trim()) return;
     setLoading(true);
     setSearched(true);
     try {
-      const lat = 6.1372; const lng = 1.2255;
+      const lat = userCoords?.lat ?? 6.1372;
+      const lng = userCoords?.lng ?? 1.2255;
       let url = `/search?q=${encodeURIComponent(query)}&lat=${lat}&lng=${lng}`;
-      if (searchType === 'pharmacy') url = `/pharmacies/search?q=${encodeURIComponent(query)}&lat=${lat}&lng=${lng}`;
+      if (searchType === 'pharmacy') {
+        url = `/pharmacies?q=${encodeURIComponent(query)}&lat=${lat}&lng=${lng}`;
+      }
       const response = await api.get(url);
-      const data = await response.json();
-      setResults(data);
+      if (response.ok) {
+        const data = await response.json();
+        if (searchType === 'pharmacy') {
+          // Normaliser pour SearchResult format
+          const formatted = (Array.isArray(data) ? data : []).map((p: any) => ({
+            pharmacy_id: p.id,
+            pharmacy_name: p.name,
+            address: p.address,
+            phone: p.phone,
+            is_on_duty: p.is_on_duty,
+            is_verified: p.is_verified,
+            medication_id: 0,
+            medication_name: p.is_on_duty ? 'Pharmacie de garde' : 'Pharmacie partenaire',
+            price: '---',
+            quantity: 1,
+            distance: p.distance ?? 0,
+            lat: p.lat,
+            lng: p.lng,
+          }));
+          setResults(formatted);
+        } else {
+          setResults(Array.isArray(data) ? data : []);
+        }
+      } else {
+        setResults([]);
+      }
     } catch {
       setNotification({ message: 'La recherche a échoué', type: 'error' });
-    } finally { setLoading(false); }
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOnDutySearch = async () => {
@@ -305,25 +377,33 @@ export default function Home() {
     setSearched(true);
     setQuery('Pharmacies de Garde');
     try {
-      const response = await api.get('/pharmacies/on-duty');
-      const data = await response.json();
-
-      // Formatter les résultats pour l'affichage (simuler medication_id pour la liste)
-      const formatted = data.map((p: any) => ({
-        pharmacy_id: p.id,
-        pharmacy_name: p.name,
-        address: p.address,
-        phone: p.phone,
-        is_on_duty: p.is_on_duty,
-        medication_id: 0,
-        medication_name: 'Consulter catalogue',
-        price: '---',
-        distance: 0
-      }));
-
-      setResults(formatted);
+      const lat = userCoords?.lat ?? 6.1372;
+      const lng = userCoords?.lng ?? 1.2255;
+      const response = await api.get(`/pharmacies/on-duty?lat=${lat}&lng=${lng}`);
+      if (response.ok) {
+        const data = await response.json();
+        const formatted = (Array.isArray(data) ? data : []).map((p: any) => ({
+          pharmacy_id: p.id,
+          pharmacy_name: p.name,
+          address: p.address,
+          phone: p.phone,
+          is_on_duty: p.is_on_duty,
+          is_verified: p.is_verified,
+          medication_id: 0,
+          medication_name: 'Pharmacie de garde 24h/7',
+          price: '---',
+          quantity: 1,
+          distance: p.distance ?? 0,
+          lat: p.lat,
+          lng: p.lng,
+        }));
+        setResults(formatted);
+      } else {
+        setResults([]);
+      }
     } catch {
       setNotification({ message: 'Erreur lors de la recherche des pharmacies de garde', type: 'error' });
+      setResults([]);
     } finally {
       setLoading(false);
     }
@@ -471,14 +551,26 @@ export default function Home() {
                   className="w-full focus:outline-none text-slate-900 font-bold bg-transparent text-lg placeholder:text-slate-400"
                 />
               </div>
-              <div className="flex-1 flex items-center px-6 py-4 gap-4 bg-slate-50 rounded-[24px] group focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
-                <MapPin className="text-slate-400 w-6 h-6 group-focus-within:text-emerald-500" />
-                <input
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full focus:outline-none text-slate-900 font-bold bg-transparent text-lg placeholder:text-slate-400"
-                />
+              <div className="flex-1 flex items-center px-4 md:px-6 py-4 gap-3 bg-slate-50 rounded-[24px] group focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500 transition-all justify-between">
+                <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                  <MapPin className="text-emerald-500 w-5 h-5 flex-shrink-0" />
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full focus:outline-none text-slate-900 font-bold bg-transparent text-sm md:text-base placeholder:text-slate-400 truncate"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => getUserLocation(true)}
+                  disabled={isLocating}
+                  title="Actualiser ma position GPS"
+                  className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl transition-all active:scale-90 flex-shrink-0 flex items-center gap-1.5 text-xs font-black"
+                >
+                  <Navigation className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">GPS</span>
+                </button>
               </div>
             </div>
             <button
@@ -509,15 +601,17 @@ export default function Home() {
       {viewMode === 'map' ? (
         <section className="h-[calc(100vh-80px)] w-full relative animate-in fade-in duration-500">
           <PharmacyMap
+            userLocation={userCoords}
             pharmacies={(results.length > 0 ? results : nearbyPharmacies).map((p: any) => ({
               id: p.pharmacy_id || p.id,
               name: p.pharmacy_name || p.name,
               address: p.address,
-              phone: p.phone,
-              is_on_duty: p.is_on_duty,
-              is_verified: p.is_verified,
-              lat: p.lat || 6.1372,
-              lng: p.lng || 1.2255
+              phone: p.phone || '',
+              is_on_duty: !!p.is_on_duty,
+              is_verified: !!p.is_verified,
+              lat: parseFloat(p.lat) || 6.1372,
+              lng: parseFloat(p.lng) || 1.2255,
+              distance: typeof p.distance === 'number' ? p.distance : undefined,
             }))}
           />
           <div className="absolute top-4 left-4 right-4 bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-slate-100 flex items-center justify-between pointer-events-none">
@@ -605,45 +699,109 @@ export default function Home() {
           <section id="pharmacies-section" className="max-w-7xl mx-auto px-4 py-20">
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
               <div>
-                <div className="inline-block px-4 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-widest mb-3">Géolocalisation</div>
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-none">Pharmacies à proximité</h2>
-              </div>
-              <button
-                onClick={() => setShowAll(!showAll)}
-                className="self-start md:self-auto bg-white px-6 py-3 rounded-2xl font-black text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
-              >
-                {showAll ? 'Voir moins' : 'Tout afficher'}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {(Array.isArray(nearbyPharmacies) ? (showAll ? nearbyPharmacies : nearbyPharmacies.slice(0, 3)) : []).map((p) => (
-                <div key={p.id} className="group bg-white rounded-[40px] p-3 shadow-sm border border-slate-100 hover:shadow-2xl transition-all duration-500 overflow-hidden">
-                  <div className="relative h-56 rounded-[32px] overflow-hidden bg-slate-100 mb-6">
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-                    <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm px-4 py-2 rounded-2xl text-[10px] font-black text-emerald-600 shadow-xl">OUVERT</div>
-                    <div className="absolute bottom-6 left-6 flex items-center gap-2 text-white">
-                      <div className="bg-white/20 backdrop-blur-md p-2 rounded-xl">
-                        <MapPin className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Distance</p>
-                        <p className="text-xl font-black">{(p.distance / 1000).toFixed(1)} km</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="px-5 pb-6">
-                    <h4 className="text-2xl font-black text-slate-900 mb-3 group-hover:text-emerald-600 transition-colors truncate">{p.name}</h4>
-                    <p className="text-slate-500 font-medium text-sm mb-8 line-clamp-2 h-10">{p.address}</p>
-                    <div className="flex gap-3">
-                      <button className="flex-[2] bg-emerald-600 text-white py-4 rounded-2xl font-black text-sm hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all active:scale-95">Commander</button>
-                      <button onClick={() => handleAppointment(p.id, p.name)} className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black text-sm hover:bg-slate-200 transition-all active:scale-95">RDV</button>
-                    </div>
-                  </div>
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-black uppercase tracking-widest mb-3">
+                  <Navigation className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+                  Géolocalisation en temps réel
                 </div>
-              ))}
+                <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-none">Pharmacies à proximité</h2>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => getUserLocation(true)}
+                  disabled={isLocating}
+                  className="bg-white px-5 py-3 rounded-2xl font-bold text-xs text-emerald-700 border border-emerald-200 hover:bg-emerald-50 transition-all flex items-center gap-2 active:scale-95 shadow-sm"
+                >
+                  <Navigation className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
+                  Actualiser GPS
+                </button>
+                {nearbyPharmacies.length > 3 && (
+                  <button
+                    onClick={() => setShowAll(!showAll)}
+                    className="bg-white px-6 py-3 rounded-2xl font-black text-xs text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm"
+                  >
+                    {showAll ? 'Voir moins' : `Tout afficher (${nearbyPharmacies.length})`}
+                  </button>
+                )}
+              </div>
             </div>
+
+            {nearbyPharmacies.length === 0 ? (
+              <div className="bg-white rounded-[32px] p-12 text-center border border-slate-100 shadow-sm max-w-lg mx-auto">
+                <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                  <MapPin className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-black text-slate-800 mb-2">Recherche des pharmacies autour de vous...</h3>
+                <p className="text-slate-500 text-sm mb-6">Autorisez la géolocalisation pour découvrir les pharmacies les plus proches en temps réel.</p>
+                <button
+                  onClick={() => getUserLocation(true)}
+                  className="bg-emerald-600 text-white px-6 py-3.5 rounded-2xl font-black text-sm hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+                >
+                  Activer la géolocalisation
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {(showAll ? nearbyPharmacies : nearbyPharmacies.slice(0, 3)).map((p) => (
+                  <div key={p.id} className="group bg-white rounded-[40px] p-3 shadow-sm border border-slate-100 hover:shadow-2xl transition-all duration-500 overflow-hidden flex flex-col justify-between">
+                    <div>
+                      <div className="relative h-52 rounded-[32px] overflow-hidden bg-slate-900 mb-6">
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/40 to-transparent"></div>
+                        <div className="absolute top-4 left-4 flex gap-2">
+                          {p.is_on_duty && (
+                            <span className="bg-red-500 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg shadow-red-500/50 uppercase tracking-tight flex items-center gap-1">
+                              <Clock className="w-3 h-3" /> De Garde
+                            </span>
+                          )}
+                          {p.is_verified && (
+                            <span className="bg-blue-500 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg shadow-blue-500/50 uppercase tracking-tight flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3" /> Certifiée
+                            </span>
+                          )}
+                        </div>
+                        <div className="absolute top-4 right-4 bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-black shadow-lg">
+                          OUVERT
+                        </div>
+                        <div className="absolute bottom-5 left-5 flex items-center gap-3 text-white">
+                          <div className="bg-white/20 backdrop-blur-md p-2.5 rounded-2xl">
+                            <MapPin className="w-5 h-5 text-emerald-300" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-200">Distance réelle</p>
+                            <p className="text-xl font-black">
+                              {p.distance < 1000 ? `${p.distance} m` : `${(p.distance / 1000).toFixed(1)} km`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="px-4 pb-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="text-xl font-black text-slate-900 group-hover:text-emerald-600 transition-colors truncate">{p.name}</h4>
+                        </div>
+                        <p className="text-slate-500 font-medium text-sm mb-6 line-clamp-2 h-10">{p.address}</p>
+                      </div>
+                    </div>
+
+                    <div className="px-4 pb-4 flex gap-2">
+                      {p.phone && (
+                        <a
+                          href={`tel:${p.phone}`}
+                          className="flex-1 bg-slate-900 text-white py-3.5 rounded-2xl font-black text-xs hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-md active:scale-95 text-center"
+                        >
+                          <Phone className="w-3.5 h-3.5" /> Appeler
+                        </a>
+                      )}
+                      <button 
+                        onClick={() => handleAppointment(p.id, p.name)} 
+                        className="flex-1 bg-emerald-50 text-emerald-700 border border-emerald-100 py-3.5 rounded-2xl font-black text-xs hover:bg-emerald-100 transition-all active:scale-95 text-center"
+                      >
+                        Prendre RDV
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         </>
       )}
