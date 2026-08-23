@@ -28,6 +28,7 @@ backend/.env
 # Build outputs
 build/
 uploads/
+*.tsbuildinfo
 
 # Logs
 *.log

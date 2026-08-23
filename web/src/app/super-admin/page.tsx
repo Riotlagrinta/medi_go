@@ -31,7 +31,7 @@ interface User {
   full_name: string;
   role: string;
   pharmacy_id: number | null;
-  pharmacies?: { name: string };
+  pharmacy_name?: string;
   created_at: string;
 }
 
@@ -269,7 +269,7 @@ export default function SuperAdminDashboard() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm font-bold text-slate-600">
-                        {u.pharmacies?.name || '---'}
+                        {u.pharmacy_name || '---'}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <select 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Calendar, Pill, MessageSquare, Bell, ChevronRight, Activity, User } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import { api } from '../../services/api'; // On suppose que ce helper API existe
+import { api } from './mobile/src/lib/api';
 
 interface UserStats {
     full_name: string;

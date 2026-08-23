@@ -1,16 +1,18 @@
-# mobile
+# MediGo Mobile (Expo / React Native)
 
-A new Flutter project.
+Application mobile officielle pour MediGo Togo.
 
-## Getting Started
+## Stack Technique
+- **Framework** : React Native avec Expo 54 (Expo Router v4)
+- **Langage** : TypeScript
+- **Navigation** : Expo Router (Tabs & Stack)
+- **Cartographie** : React Native Maps
 
-This project is a starting point for a Flutter application.
+## Démarrage rapide
+```bash
+# Installer les dépendances
+npm install
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# Démarrer le serveur Expo
+npm start
+```

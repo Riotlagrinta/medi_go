@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity, Dimensions, ActivityIndicator
 import MapView, { Marker, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { MapPin, Search } from 'lucide-react-native';
-import { api } from '../../services/api'; // On suppose que ce helper API existe
+import { api } from './mobile/src/lib/api';
 
 const { width, height } = Dimensions.get('window');
 

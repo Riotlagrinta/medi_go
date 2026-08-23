@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { NextRequest } from 'next/server';
 
-const SECRET = process.env.JWT_SECRET!;
+const SECRET = process.env.JWT_SECRET || 'medigo_default_jwt_secret_dev_2026';
 
 export interface JWTPayload {
   id: number;

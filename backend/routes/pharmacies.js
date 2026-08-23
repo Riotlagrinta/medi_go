@@ -59,4 +59,25 @@ router.get('/:id/prescriptions', requireAuth, async (req, res) => {
   }
 });
 
+// GET /pharmacies/:id/stocks
+router.get('/:id/stocks', requireAuth, async (req, res) => {
+  const { q = '' } = req.query;
+  try {
+    const { rows } = await db.query(
+      `SELECT ps.id AS stock_id, ps.pharmacy_id, ps.medication_id, ps.quantity, ps.price,
+              m.name, m.category, m.description
+       FROM pharmacy_stocks ps
+       JOIN medications m ON m.id = ps.medication_id
+       WHERE ps.pharmacy_id = $1
+         AND ($2 = '' OR m.name ILIKE $3)
+       ORDER BY m.name ASC`,
+      [req.params.id, q, `%${q}%`]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

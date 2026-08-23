@@ -22,6 +22,8 @@ app.use('/api/messages',      require('./routes/messages'));
 app.use('/api/admin',         require('./routes/admin'));
 app.use('/api/reports',       require('./routes/reports'));
 app.use('/api/upload',        require('./routes/upload'));
+app.use('/api/stocks',        require('./routes/stocks'));
+app.use('/api/medications',   require('./routes/medications'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

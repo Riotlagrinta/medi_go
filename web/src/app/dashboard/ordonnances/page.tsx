@@ -9,7 +9,9 @@ interface Prescription {
   image_url: string;
   status: 'pending' | 'ready' | 'rejected' | 'picked_up';
   created_at: string;
-  users: {
+  full_name?: string;
+  phone?: string;
+  users?: {
     full_name: string;
     phone: string;
   };
@@ -89,8 +91,11 @@ export default function OrdonnancesPage() {
               {/* Content */}
               <div className="p-6 flex-1 flex flex-col">
                 <div className="mb-4">
-                  <h3 className="font-bold text-slate-900 text-lg">{p.users?.full_name || 'Patient inconnu'}</h3>
-                  <p className="text-slate-500 text-sm flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-lg">{p.full_name || p.users?.full_name || 'Patient'}</h3>
+                  {(p.phone || p.users?.phone) && (
+                    <p className="text-emerald-600 text-xs font-bold">{p.phone || p.users?.phone}</p>
+                  )}
+                  <p className="text-slate-500 text-sm flex items-center gap-2 mt-1">
                     <Clock className="w-3 h-3" /> {new Date(p.created_at).toLocaleDateString()} à {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>

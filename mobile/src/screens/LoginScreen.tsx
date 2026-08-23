@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import * as SecureStore from 'expo-secure-store';
 
 export default function LoginScreen({ navigation }: any) {
@@ -16,18 +16,19 @@ export default function LoginScreen({ navigation }: any) {
 
         setLoading(true);
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
+            const res = await api.post('/auth/login', { email, password });
+            const data = await res.json();
 
-            if (error) throw error;
+            if (!res.ok) {
+                throw new Error(data.error || 'Identifiants incorrects');
+            }
 
-            if (data.session) {
-                await SecureStore.setItemAsync('token', data.session.access_token);
-                // Redirige l'utilisateur vers l'écran principal après connexion
-                navigation.replace('Main');
-                // On pourrait aussi stocker les infos user
+            if (data.token) {
+                await SecureStore.setItemAsync('token', data.token);
+                await SecureStore.setItemAsync('user', JSON.stringify(data.user));
+                if (navigation?.replace) {
+                    navigation.replace('Main');
+                }
             }
         } catch (error: any) {
             Alert.alert('Erreur de connexion', error.message);
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: '#0ea5e9',
+        color: '#059669',
         textAlign: 'center',
     },
     subtitle: {
@@ -105,7 +106,7 @@ const styles = StyleSheet.create({
         borderColor: '#e2e8f0',
     },
     button: {
-        backgroundColor: '#0ea5e9',
+        backgroundColor: '#059669',
         padding: 15,
         borderRadius: 10,
         alignItems: 'center',

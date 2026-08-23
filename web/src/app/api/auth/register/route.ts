@@ -4,12 +4,17 @@ import sql from '@/lib/db';
 import { makeToken } from '@/lib/server-auth';
 
 export async function POST(req: NextRequest) {
-  const { email, password, full_name, role = 'patient' } = await req.json();
+  const body = await req.json();
+  const email = (body.email || '').trim().toLowerCase();
+  const password = body.password;
+  const full_name = (body.full_name || body.name || '').trim();
+  const role = body.role || 'patient';
 
-  if (!email || !password || !full_name)
-    return Response.json({ error: 'Champs requis manquants' }, { status: 400 });
+  if (!email) return Response.json({ error: 'Adresse email requise' }, { status: 400 });
+  if (!password) return Response.json({ error: 'Mot de passe requis' }, { status: 400 });
+  if (!full_name) return Response.json({ error: 'Nom complet requis' }, { status: 400 });
 
-  const exists = await sql`SELECT id FROM users WHERE email = ${email}`;
+  const exists = await sql`SELECT id FROM users WHERE LOWER(email) = LOWER(${email})`;
   if (exists.length)
     return Response.json({ error: 'Email déjà utilisé' }, { status: 409 });
 

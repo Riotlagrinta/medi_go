@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Pill, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
 
 export default function Connexion() {
   const [email, setEmail] = useState('');
@@ -18,12 +19,10 @@ export default function Connexion() {
     setError('');
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const response = await api.post('/auth/login', { 
+        email: email.trim().toLowerCase(), 
+        password 
       });
-
       const data = await response.json();
 
       if (!response.ok) {

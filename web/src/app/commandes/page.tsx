@@ -19,7 +19,8 @@ interface Reservation {
 
 interface Appointment {
   id: number;
-  date: string;
+  appointment_date?: string;
+  date?: string;
   reason: string;
   status: string;
   pharmacy_name: string;
@@ -31,7 +32,7 @@ interface Prescription {
   image_url: string;
   status: string;
   created_at: string;
-  patient_phone: string;
+  patient_phone?: string;
 }
 
 export default function Commandes() {
@@ -47,12 +48,21 @@ export default function Commandes() {
         const [resResponse, appResponse, presResponse] = await Promise.all([
           api.get('/reservations'),
           api.get('/appointments'),
-          api.get('/pharmacies/1/prescriptions') // Note: pharmacy 1 as default for now
+          api.get('/prescriptions')
         ]);
         
-        setReservations(await resResponse.json());
-        setAppointments(await appResponse.json());
-        setPrescriptions(await presResponse.json());
+        if (resResponse.ok) {
+          const resData = await resResponse.json();
+          setReservations(Array.isArray(resData) ? resData : []);
+        }
+        if (appResponse.ok) {
+          const appData = await appResponse.json();
+          setAppointments(Array.isArray(appData) ? appData : []);
+        }
+        if (presResponse.ok) {
+          const presData = await presResponse.json();
+          setPrescriptions(Array.isArray(presData) ? presData : []);
+        }
       } catch (error) {
         console.error('Failed to fetch data:', error);
       } finally {
@@ -198,7 +208,7 @@ export default function Commandes() {
                     <MapPin className="w-3 h-3 text-blue-500" /> {app.pharmacy_name}
                   </div>
                   <div className="text-[11px] font-black text-slate-900 bg-slate-50 px-2 py-1 rounded-lg">
-                    {new Date(app.date).toLocaleString('fr-FR', {hour: '2-digit', minute:'2-digit'})}
+                    {new Date(app.appointment_date || app.date || new Date()).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Pill, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
 
 export default function Inscription() {
   const [formData, setFormData] = useState({
@@ -27,15 +28,11 @@ export default function Inscription() {
     setError('');
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          full_name: formData.full_name,
-          role: 'patient' // Forcé en patient
-        }),
+      const response = await api.post('/auth/register', {
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        full_name: formData.full_name.trim(),
+        role: 'patient'
       });
 
       const data = await response.json();

@@ -9,7 +9,7 @@ const SALT_ROUNDS = 10;
 function makeToken(user) {
   return jwt.sign(
     { id: user.id, email: user.email, role: user.role, pharmacy_id: user.pharmacy_id },
-    process.env.JWT_SECRET,
+    process.env.JWT_SECRET || 'medigo_default_jwt_secret_dev_2026',
     { expiresIn: '7d' }
   );
 }
@@ -21,12 +21,16 @@ function safeUser(u) {
 
 // POST /auth/register
 router.post('/register', async (req, res) => {
-  const { email, password, full_name, role = 'patient' } = req.body;
-  if (!email || !password || !full_name)
-    return res.status(400).json({ error: 'Champs requis manquants' });
+  const { password, role = 'patient' } = req.body;
+  const email = (req.body.email || '').trim().toLowerCase();
+  const full_name = (req.body.full_name || req.body.name || '').trim();
+
+  if (!email) return res.status(400).json({ error: 'Adresse email requise' });
+  if (!password) return res.status(400).json({ error: 'Mot de passe requis' });
+  if (!full_name) return res.status(400).json({ error: 'Nom complet requis' });
 
   try {
-    const exists = await db.query('SELECT id FROM users WHERE email = $1', [email]);
+    const exists = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
     if (exists.rows.length) return res.status(409).json({ error: 'Email déjà utilisé' });
 
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
@@ -41,13 +45,15 @@ router.post('/register', async (req, res) => {
     res.status(201).json({ token: makeToken(user), user: safeUser(user) });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erreur serveur' });
+    res.status(500).json({ error: 'Erreur serveur lors de la création du compte' });
   }
 });
 
 // POST /auth/login
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const email = (req.body.email || '').trim().toLowerCase();
+  const password = req.body.password;
+
   if (!email || !password)
     return res.status(400).json({ error: 'Email et mot de passe requis' });
 
@@ -56,7 +62,7 @@ router.post('/login', async (req, res) => {
       `SELECT u.*, p.name AS pharmacy_name
        FROM users u
        LEFT JOIN pharmacies p ON p.id = u.pharmacy_id
-       WHERE u.email = $1`,
+       WHERE LOWER(u.email) = LOWER($1)`,
       [email]
     );
     const user = rows[0];
