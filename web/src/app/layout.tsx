@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Suspense } from "react";
 import NavigationProgressBar from "@/components/NavigationProgressBar";
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: "MediGo - Votre santé au Togo",
@@ -34,6 +35,7 @@ export default function RootLayout({
           <NavigationProgressBar />
         </Suspense>
         {children}
+        <Analytics />
       </body>
     </html>
   );
