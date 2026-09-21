@@ -86,10 +86,13 @@ export default function Connexion() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Mot de passe</label>
+            <div className="flex items-center justify-between ml-1 mr-1">
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest">Mot de passe</label>
+              <Link href="/mot-de-passe-oublie" className="text-xs font-bold text-emerald-600 hover:underline">Mot de passe oublié ?</Link>
+            </div>
             <div className="relative">
               <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <input 
+              <input
                 type="password" required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

@@ -222,3 +222,13 @@ INSERT INTO pharmacy_stocks (pharmacy_id, medication_id, quantity, price) VALUES
   (3, 1, 100,  400),
   (3, 2,  8,  3200),
   (3, 5, 25,  1500);
+
+-- ============================================================
+-- MIGRATION : mot de passe oublié (à exécuter sur une base déjà
+-- existante — idempotent, sans risque si déjà appliqué)
+-- ============================================================
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS reset_token_hash    VARCHAR(64),
+  ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token_hash);
