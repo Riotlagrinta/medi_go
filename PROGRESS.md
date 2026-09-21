@@ -101,6 +101,17 @@
 
 ---
 
+## 🟡 Configuration requise — Mot de passe oublié (code fait, à activer)
+
+- [ ] Exécuter sur Neon la migration ajoutant `reset_token_hash` / `reset_token_expires`
+      à `users` (voir bas de `schema.sql`, idempotent)
+- [ ] Créer un compte [Resend](https://resend.com), générer une clé API et l'ajouter
+      comme `RESEND_API_KEY` dans Vercel → Settings → Environment Variables
+- [ ] (optionnel) Vérifier un domaine d'envoi dans Resend et définir `RESEND_FROM_EMAIL` —
+      sans domaine vérifié, les emails ne partent que vers l'adresse du compte Resend
+
+---
+
 ## 🔴 PHASE 4 — Production (À FAIRE)
 
 - [ ] Domaine personnalisé (ex: medigo.tg)
