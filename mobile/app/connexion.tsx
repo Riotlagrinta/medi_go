@@ -24,9 +24,15 @@ export default function Connexion() {
       await SecureStore.setItemAsync('token', data.token);
       await SecureStore.setItemAsync('user',  JSON.stringify(data.user));
 
-      if (data.user.role === 'super_admin')      router.replace('/(tabs)/profil');
-      else if (data.user.role === 'pharmacy_admin') router.replace('/(tabs)/dashboard');
-      else                                          router.replace('/(tabs)');
+      // L'application mobile ne propose que l'expérience patient (recherche, carte, commandes, profil) :
+      // il n'existe pas d'écran de gestion pharmacie ici, contrairement au tableau de bord web.
+      if (data.user.role === 'pharmacy_admin' || data.user.role === 'super_admin') {
+        Alert.alert(
+          'Compte professionnel',
+          'La gestion de pharmacie se fait depuis le site web MediGo. Vous êtes connecté(e) en consultation ici.'
+        );
+      }
+      router.replace('/(tabs)');
     } catch (e: any) {
       Alert.alert('Connexion échouée', e.message);
     } finally {

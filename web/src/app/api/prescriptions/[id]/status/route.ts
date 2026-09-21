@@ -13,9 +13,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!allowed.includes(status))
     return Response.json({ error: 'Statut invalide' }, { status: 400 });
 
+  // Un pharmacy_admin ne peut modifier que les ordonnances de sa pharmacie ; un super_admin peut toutes les gérer.
+  if (user.role === 'pharmacy_admin') {
+    const rows = await sql`
+      UPDATE prescriptions SET status = ${status}
+      WHERE id = ${id} AND pharmacy_id = ${user.pharmacy_id}
+      RETURNING *
+    `;
+    if (!rows[0]) return Response.json({ error: 'Ordonnance introuvable' }, { status: 404 });
+    return Response.json(rows[0]);
+  }
+
   const rows = await sql`
     UPDATE prescriptions SET status = ${status}
-    WHERE id = ${id} AND pharmacy_id = ${user.pharmacy_id}
+    WHERE id = ${id}
     RETURNING *
   `;
   if (!rows[0]) return Response.json({ error: 'Ordonnance introuvable' }, { status: 404 });

@@ -227,12 +227,15 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
+  // Pharmacie ciblée par le chat "Conseil" : la plus proche de l'utilisateur (fallback : premier résultat de recherche).
+  const chatPharmacyId = nearbyPharmacies[0]?.id ?? results[0]?.pharmacy_id ?? null;
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatMessage.trim()) return;
+    if (!chatMessage.trim() || !chatPharmacyId) return;
     try {
       const response = await api.post('/messages', {
-        pharmacy_id: 1,
+        pharmacy_id: chatPharmacyId,
         content: chatMessage,
         is_from_pharmacy: false
       });
@@ -246,8 +249,9 @@ export default function Home() {
   };
 
   const fetchMsgs = async () => {
+    if (!chatPharmacyId) return;
     try {
-      const response = await api.get('/messages/1');
+      const response = await api.get(`/messages/${chatPharmacyId}`);
       if (response.ok) {
         const data = await response.json();
         setMessages(Array.isArray(data) ? data : []);
@@ -259,12 +263,12 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (showChat && user) {
+    if (showChat && user && chatPharmacyId) {
       fetchMsgs();
       const interval = setInterval(fetchMsgs, 5000);
       return () => clearInterval(interval);
     }
-  }, [showChat, !!user]);
+  }, [showChat, !!user, chatPharmacyId]);
 
   // Récupère les pharmacies à proximité en temps réel
   const fetchNearby = async (lat: number, lng: number) => {
@@ -447,9 +451,15 @@ export default function Home() {
   const handlePrescriptionUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       if (!e.target.files || e.target.files.length === 0) return;
+      const targetPharmacyId = nearbyPharmacies[0]?.id ?? results[0]?.pharmacy_id;
+      if (!targetPharmacyId) {
+        setNotification({ message: 'Activez votre position pour choisir une pharmacie destinataire', type: 'error' });
+        return;
+      }
+
       setLoading(true);
       setNotification({ message: "Envoi de l'ordonnance...", type: 'success' });
-      
+
       const file = e.target.files[0];
       const formData = new FormData();
       formData.append('file', file);
@@ -457,7 +467,7 @@ export default function Home() {
       const result = await uploadPrescriptionAction(formData);
 
       if (result.success) {
-        await api.post('/prescriptions', { pharmacy_id: 1, image_url: result.publicUrl });
+        await api.post('/prescriptions', { pharmacy_id: targetPharmacyId, image_url: result.publicUrl });
         setNotification({ message: 'Ordonnance envoyée !', type: 'success' });
       } else {
         throw new Error(result.error);
@@ -865,15 +875,21 @@ export default function Home() {
             <button onClick={() => setShowChat(false)}><X className="w-5 h-5" /></button>
           </div>
           <div className="h-80 overflow-y-auto p-4 space-y-4 bg-slate-50">
-            {Array.isArray(messages) && messages.map((m) => (
-              <div key={m.id} className={`flex ${!m.is_from_pharmacy ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${!m.is_from_pharmacy ? 'bg-emerald-600 text-white' : 'bg-white text-slate-700 shadow-sm border border-slate-100'}`}>{m.content}</div>
-              </div>
-            ))}
+            {!chatPharmacyId ? (
+              <p className="text-center text-xs text-slate-400 font-medium mt-8">
+                Activez votre position ou lancez une recherche pour discuter avec une pharmacie proche de vous.
+              </p>
+            ) : (
+              Array.isArray(messages) && messages.map((m) => (
+                <div key={m.id} className={`flex ${!m.is_from_pharmacy ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${!m.is_from_pharmacy ? 'bg-emerald-600 text-white' : 'bg-white text-slate-700 shadow-sm border border-slate-100'}`}>{m.content}</div>
+                </div>
+              ))
+            )}
           </div>
           <form onSubmit={handleSendMessage} className="p-4 bg-white border-t flex gap-2">
-            <input type="text" value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Message..." className="flex-1 bg-slate-50 border-none rounded-xl py-2 px-4 outline-none focus:ring-2 focus:ring-emerald-500" />
-            <button type="submit" className="bg-emerald-600 text-white p-2 rounded-xl"><Send className="w-5 h-5" /></button>
+            <input type="text" value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Message..." disabled={!chatPharmacyId} className="flex-1 bg-slate-50 border-none rounded-xl py-2 px-4 outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50" />
+            <button type="submit" disabled={!chatPharmacyId} className="bg-emerald-600 text-white p-2 rounded-xl disabled:opacity-50"><Send className="w-5 h-5" /></button>
           </form>
         </div>
       )}
