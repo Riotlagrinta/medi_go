@@ -44,9 +44,13 @@ Plateforme de référence santé au Togo connectant patients et pharmacies en te
 - Liste des conversations patients
 - Répondre aux messages en temps réel
 
-### 2.3 Système de garde
-- Interface pour planifier les pharmacies de garde par date
-- Rotation automatique ou manuelle par le super admin
+### 2.3 Système de garde ✅ (v1 — import manuel)
+- ✅ Toggle manuel par pharmacie (`/dashboard`) et par le super admin (`/super-admin`)
+- ✅ Import de la liste hebdomadaire officielle en texte libre, avec prévisualisation
+  avant validation (`/super-admin` → onglet « Import Garde »)
+- [ ] Amélioration possible : scraper automatique (cron hebdomadaire) qui réutilise
+  le même parseur, une fois la source jugée assez stable — voir la conversation du
+  22/09/2026 pour le détail des options envisagées
 
 ### 2.4 Page À propos (`/a-propos`)
 - Présentation de MediGo
