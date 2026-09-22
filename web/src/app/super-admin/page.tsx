@@ -1,13 +1,31 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, Building2, TrendingUp, ShoppingBag, 
-  CheckCircle2, XCircle, ShieldCheck, Search, 
+import {
+  Users, Building2, TrendingUp, ShoppingBag,
+  CheckCircle2, XCircle, ShieldCheck, Search,
   MoreVertical, RefreshCw, BadgeCheck, AlertTriangle,
-  UserPlus, UserCog, Mail, Phone as PhoneIcon
+  UserPlus, UserCog, Mail, Phone as PhoneIcon,
+  ClipboardPaste, Sparkles, Check
 } from 'lucide-react';
 import { api } from '@/lib/api';
+
+interface DutyPreviewEntry {
+  name: string;
+  address: string;
+  city: string;
+  phone: string;
+  insurances: string[];
+  existingId: number | null;
+  existingName: string | null;
+}
+
+interface DutyApplyResult {
+  updated: number;
+  created: number;
+  resetToFalse: number;
+  totalOnDuty: number;
+}
 
 interface Stats {
   users: number;
@@ -37,13 +55,21 @@ interface User {
 }
 
 export default function SuperAdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'pharmacies' | 'users'>('pharmacies');
+  const [activeTab, setActiveTab] = useState<'pharmacies' | 'users' | 'garde'>('pharmacies');
   const [stats, setStats] = useState<Stats | null>(null);
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [authorized, setAuthorized] = useState(false);
+
+  // Import de la liste hebdomadaire des pharmacies de garde
+  const [gardeText, setGardeText] = useState('');
+  const [gardePreview, setGardePreview] = useState<DutyPreviewEntry[] | null>(null);
+  const [gardeUnmatched, setGardeUnmatched] = useState<string[]>([]);
+  const [gardeSelected, setGardeSelected] = useState<Set<number>>(new Set());
+  const [gardeLoading, setGardeLoading] = useState(false);
+  const [gardeResult, setGardeResult] = useState<DutyApplyResult | null>(null);
 
   const checkAuth = async () => {
     try {
@@ -128,6 +154,54 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  const analyzeGardeText = async () => {
+    if (!gardeText.trim()) return;
+    setGardeLoading(true);
+    setGardeResult(null);
+    try {
+      const res = await api.post('/admin/duty-import/preview', { text: gardeText });
+      if (res.ok) {
+        const data = await res.json();
+        setGardePreview(data.entries);
+        setGardeUnmatched(data.unmatched || []);
+        setGardeSelected(new Set((data.entries as DutyPreviewEntry[]).map((_, i) => i)));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGardeLoading(false);
+    }
+  };
+
+  const toggleGardeEntry = (index: number) => {
+    setGardeSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index); else next.add(index);
+      return next;
+    });
+  };
+
+  const applyGardeImport = async () => {
+    if (!gardePreview) return;
+    setGardeLoading(true);
+    try {
+      const entries = gardePreview.filter((_, i) => gardeSelected.has(i));
+      const res = await api.post('/admin/duty-import/apply', { entries });
+      if (res.ok) {
+        const data = await res.json();
+        setGardeResult(data);
+        setGardePreview(null);
+        setGardeUnmatched([]);
+        setGardeText('');
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGardeLoading(false);
+    }
+  };
+
   const updateUserRole = async (userId: number, role: string, pharmacyId: number | null) => {
     try {
       const res = await api.patch(`/admin/users/${userId}/role`, { role, pharmacy_id: pharmacyId });
@@ -188,32 +262,146 @@ export default function SuperAdminDashboard() {
             >
               <Building2 className="w-5 h-5" /> Pharmacies
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('users')}
               className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-black transition-all ${activeTab === 'users' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
             >
               <Users className="w-5 h-5" /> Utilisateurs
             </button>
+            <button
+              onClick={() => setActiveTab('garde')}
+              className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-black transition-all ${activeTab === 'garde' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              <ClipboardPaste className="w-5 h-5" /> Import Garde
+            </button>
           </div>
 
-          <div className="p-6 md:p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
-            <h2 className="text-xl font-black text-slate-800">
-              {activeTab === 'pharmacies' ? 'Toutes les Pharmacies' : 'Répertoire des Membres'}
-            </h2>
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <input 
-                type="text" 
-                placeholder={activeTab === 'pharmacies' ? "Rechercher une pharmacie..." : "Nom ou email..."}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-slate-50 border-none rounded-xl py-3 pl-12 pr-4 font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
-              />
+          {activeTab !== 'garde' && (
+            <div className="p-6 md:p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+              <h2 className="text-xl font-black text-slate-800">
+                {activeTab === 'pharmacies' ? 'Toutes les Pharmacies' : 'Répertoire des Membres'}
+              </h2>
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder={activeTab === 'pharmacies' ? "Rechercher une pharmacie..." : "Nom ou email..."}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-slate-50 border-none rounded-xl py-3 pl-12 pr-4 font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
+              </div>
             </div>
-          </div>
+          )}
+
+          {activeTab === 'garde' && (
+            <div className="p-6 md:p-8 space-y-6">
+              <div className="bg-amber-50 border border-amber-100 text-amber-800 text-sm font-medium p-4 rounded-2xl flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <p>
+                  Colle ici le texte brut de la liste hebdomadaire des pharmacies de garde (ex: relayée par
+                  La Cinquième ou l'Ordre National des Pharmaciens). L'extraction est automatique mais pas
+                  parfaite sur du texte libre — vérifie la prévisualisation avant de valider. Les pharmacies
+                  non présentes dans cette liste repasseront « non de garde ».
+                </p>
+              </div>
+
+              {!gardePreview ? (
+                <div className="space-y-4">
+                  <textarea
+                    value={gardeText}
+                    onChange={(e) => setGardeText(e.target.value)}
+                    rows={10}
+                    placeholder="Pharmacie JEANNE D'ARC Près de Marox Renault Star ☎️+22890864051..."
+                    className="w-full bg-slate-50 border-none rounded-2xl p-5 font-mono text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                  <button
+                    onClick={analyzeGardeText}
+                    disabled={gardeLoading || !gardeText.trim()}
+                    className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-sm hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4" /> {gardeLoading ? 'Analyse...' : 'Analyser la liste'}
+                  </button>
+
+                  {gardeResult && (
+                    <div className="bg-emerald-50 text-emerald-700 p-5 rounded-2xl text-sm font-bold">
+                      ✅ {gardeResult.updated} pharmacie(s) mise(s) à jour, {gardeResult.created} créée(s),
+                      {' '}{gardeResult.resetToFalse} repassée(s) hors garde. Total de garde : {gardeResult.totalOnDuty}.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-bold text-slate-600">
+                      {gardeSelected.size} / {gardePreview.length} pharmacies sélectionnées
+                      {gardeUnmatched.length > 0 && (
+                        <span className="text-amber-600"> · {gardeUnmatched.length} ligne(s) non reconnue(s)</span>
+                      )}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setGardePreview(null); setGardeUnmatched([]); }}
+                        className="px-4 py-2 rounded-xl text-xs font-black text-slate-500 hover:bg-slate-100 transition-all"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        onClick={applyGardeImport}
+                        disabled={gardeLoading || gardeSelected.size === 0}
+                        className="px-5 py-2 rounded-xl text-xs font-black bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-all flex items-center gap-2"
+                      >
+                        <Check className="w-4 h-4" /> {gardeLoading ? 'Application...' : `Confirmer (${gardeSelected.size})`}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="max-h-[480px] overflow-y-auto border border-slate-100 rounded-2xl divide-y divide-slate-100">
+                    {gardePreview.map((entry, i) => (
+                      <label
+                        key={i}
+                        className={`flex items-start gap-3 p-4 cursor-pointer transition-colors ${gardeSelected.has(i) ? 'bg-white' : 'bg-slate-50 opacity-60'}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={gardeSelected.has(i)}
+                          onChange={() => toggleGardeEntry(i)}
+                          className="mt-1 w-4 h-4 accent-emerald-600"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-black text-slate-900 text-sm">{entry.name}</span>
+                            <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">{entry.city}</span>
+                            {entry.existingId ? (
+                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Existante</span>
+                            ) : (
+                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Nouvelle</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">{entry.address}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{entry.phone}{entry.insurances.length > 0 && ` · ${entry.insurances.join(', ')}`}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+
+                  {gardeUnmatched.length > 0 && (
+                    <details className="bg-slate-50 rounded-2xl p-4">
+                      <summary className="text-xs font-black text-slate-500 uppercase cursor-pointer">
+                        {gardeUnmatched.length} ligne(s) non reconnue(s) — à ajouter manuellement si besoin
+                      </summary>
+                      <ul className="mt-3 space-y-1 text-xs text-slate-500 font-mono">
+                        {gardeUnmatched.map((u, i) => <li key={i}>{u}</li>)}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="overflow-x-auto">
-            {activeTab === 'pharmacies' ? (
+            {activeTab === 'garde' ? null : activeTab === 'pharmacies' ? (
               <table className="w-full text-left">
                 <thead className="bg-slate-50 text-slate-500 text-xs font-black uppercase tracking-wider">
                   <tr>
