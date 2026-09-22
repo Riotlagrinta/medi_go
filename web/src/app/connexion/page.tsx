@@ -50,18 +50,9 @@ export default function Connexion() {
     }
   };
 
-  const checkEnv = () => {
-    const url = process.env.NEXT_PUBLIC_API_URL;
-    alert(`API configurée : ${url ? url : 'http://localhost:3001/api (défaut)'}`);
-  };
-
   return (
     <main className="min-h-screen bg-slate-50 flex items-center justify-center p-4 md:p-6">
       <div className="max-w-md w-full bg-white rounded-[32px] md:rounded-[40px] shadow-xl shadow-slate-200/50 p-6 md:p-12 border border-slate-100">
-        <div className="flex justify-center mb-4">
-          <button onClick={checkEnv} className="text-[10px] text-slate-300 hover:text-slate-500 uppercase font-black tracking-widest bg-slate-50 px-3 py-1 rounded-full">Diagnostic</button>
-        </div>
-        
         <div className="text-center mb-10">
           <div className="bg-emerald-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-100 rotate-3">
             <Pill className="text-white w-8 h-8" />
