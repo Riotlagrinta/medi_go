@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const rows = await sql`
     SELECT u.id, u.email, u.full_name, u.role, u.phone, u.address,
            u.medical_info, u.photo_url, u.pharmacy_id, u.created_at,
-           p.name AS pharmacy_name
+           p.name AS pharmacy_name, p.is_on_duty AS pharmacy_is_on_duty
     FROM users u
     LEFT JOIN pharmacies p ON p.id = u.pharmacy_id
     WHERE u.id = ${user.id}

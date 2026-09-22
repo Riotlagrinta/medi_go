@@ -26,6 +26,9 @@ export default function PharmacieDashboard() {
   const [report, setReport] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [pharmacyName, setPharmacyName] = useState('Ma Pharmacie');
+  const [pharmacyId, setPharmacyId] = useState<number | null>(null);
+  const [isOnDuty, setIsOnDuty] = useState(false);
+  const [togglingDuty, setTogglingDuty] = useState(false);
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
@@ -36,6 +39,8 @@ export default function PharmacieDashboard() {
           const user = await res.json();
           if (user.role === 'pharmacy_admin' || user.role === 'super_admin') {
             setPharmacyName(user.pharmacy_name || 'Ma Pharmacie');
+            setPharmacyId(user.pharmacy_id ?? null);
+            setIsOnDuty(!!user.pharmacy_is_on_duty);
             // Mettre à jour le localStorage avec les données fraîches (optionnel mais recommandé)
             localStorage.setItem('user', JSON.stringify(user));
             setAuthorized(true);
@@ -65,6 +70,20 @@ export default function PharmacieDashboard() {
     checkAuth();
   }, []);
 
+  const toggleDuty = async () => {
+    if (!pharmacyId || togglingDuty) return;
+    const next = !isOnDuty;
+    setTogglingDuty(true);
+    try {
+      const res = await api.patch(`/pharmacies/${pharmacyId}/duty`, { is_on_duty: next });
+      if (res.ok) setIsOnDuty(next);
+    } catch (err) {
+      console.error('Erreur mise à jour statut de garde:', err);
+    } finally {
+      setTogglingDuty(false);
+    }
+  };
+
   if (!authorized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -89,7 +108,22 @@ export default function PharmacieDashboard() {
             </div>
             <p className="text-slate-500 font-medium">Gestion et statistiques en temps réel</p>
           </div>
-          <div className="flex gap-3 w-full md:w-auto">
+          <div className="flex gap-3 w-full md:w-auto items-stretch">
+            {pharmacyId && (
+              <button
+                onClick={toggleDuty}
+                disabled={togglingDuty}
+                title="Signale ta pharmacie comme étant de garde aujourd'hui — visible immédiatement par les patients"
+                className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-black text-sm transition-all active:scale-95 disabled:opacity-60 ${
+                  isOnDuty
+                    ? 'bg-red-500 text-white shadow-lg shadow-red-200 hover:bg-red-600'
+                    : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${isOnDuty ? 'bg-white animate-pulse' : 'bg-slate-300'}`} />
+                {isOnDuty ? 'De garde aujourd’hui' : 'Marquer de garde'}
+              </button>
+            )}
             <button
               onClick={handlePrint}
               className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 active:scale-95"

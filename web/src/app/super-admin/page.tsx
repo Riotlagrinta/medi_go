@@ -22,6 +22,7 @@ interface Pharmacy {
   address: string;
   phone: string;
   is_verified: boolean;
+  is_on_duty: boolean;
   created_at: string;
 }
 
@@ -110,6 +111,17 @@ export default function SuperAdminDashboard() {
       const res = await api.patch(`/admin/pharmacies/${id}/verify`, { is_verified: !currentStatus });
       if (res.ok) {
         setPharmacies(pharmacies.map(p => p.id === id ? { ...p, is_verified: !currentStatus } : p));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const toggleDuty = async (id: number, currentStatus: boolean) => {
+    try {
+      const res = await api.patch(`/pharmacies/${id}/duty`, { is_on_duty: !currentStatus });
+      if (res.ok) {
+        setPharmacies(pharmacies.map(p => p.id === id ? { ...p, is_on_duty: !currentStatus } : p));
       }
     } catch (err) {
       console.error(err);
@@ -207,6 +219,7 @@ export default function SuperAdminDashboard() {
                   <tr>
                     <th className="px-6 py-4">Pharmacie</th>
                     <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Garde</th>
                     <th className="px-6 py-4">Contact</th>
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
@@ -225,9 +238,18 @@ export default function SuperAdminDashboard() {
                           {p.is_verified ? 'Vérifiée' : 'En attente'}
                         </span>
                       </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => toggleDuty(p.id, p.is_on_duty)}
+                          title="Renseigné manuellement — aucune source officielle branchée pour l'instant"
+                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all ${p.is_on_duty ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+                        >
+                          {p.is_on_duty ? '🔴 De garde' : 'Non'}
+                        </button>
+                      </td>
                       <td className="px-6 py-4 text-sm text-slate-500">{p.phone}</td>
                       <td className="px-6 py-4 text-right">
-                        <button 
+                        <button
                           onClick={() => toggleVerify(p.id, p.is_verified)}
                           className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${p.is_verified ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
                         >
