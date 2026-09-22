@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import crypto from 'crypto';
 import sql from '@/lib/db';
 import { sendPasswordResetEmail } from '@/lib/email';
+import { checkRateLimit, getClientIp, rateLimited } from '@/lib/rateLimit';
 
 const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 heure
 
@@ -14,6 +15,15 @@ export async function POST(req: NextRequest) {
     Response.json({ message: 'Si un compte existe pour cet email, un lien de réinitialisation a été envoyé.' });
 
   if (!email) return genericResponse();
+
+  // Anti abus : empêche de bombarder la boîte mail d'un tiers ou de faire tourner
+  // le service d'envoi en boucle depuis une même IP.
+  const ip = getClientIp(req);
+  const [ipOk, emailOk] = await Promise.all([
+    checkRateLimit(`forgot:ip:${ip}`, 10, 60 * 60),
+    checkRateLimit(`forgot:email:${email}`, 3, 60 * 60),
+  ]);
+  if (!ipOk || !emailOk) return genericResponse(); // même réponse : ne révèle pas le rate limit non plus
 
   const rows = await sql`SELECT id, email FROM users WHERE LOWER(email) = LOWER(${email})`;
   const user = rows[0];

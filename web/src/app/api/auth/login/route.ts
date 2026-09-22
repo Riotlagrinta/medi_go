@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import bcrypt from 'bcryptjs';
 import sql from '@/lib/db';
 import { makeToken } from '@/lib/server-auth';
+import { checkRateLimit, getClientIp, rateLimited } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -10,6 +11,15 @@ export async function POST(req: NextRequest) {
 
   if (!email || !password)
     return Response.json({ error: 'Email et mot de passe requis' }, { status: 400 });
+
+  // Anti brute-force : par IP (un attaquant qui teste beaucoup de comptes) et par
+  // email (un compte ciblé spécifiquement, même depuis des IP différentes).
+  const ip = getClientIp(req);
+  const [ipOk, emailOk] = await Promise.all([
+    checkRateLimit(`login:ip:${ip}`, 20, 15 * 60),
+    checkRateLimit(`login:email:${email}`, 8, 15 * 60),
+  ]);
+  if (!ipOk || !emailOk) return rateLimited();
 
   const rows = await sql`
     SELECT u.*, p.name AS pharmacy_name

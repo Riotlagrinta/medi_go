@@ -72,10 +72,15 @@ export default function PharmacyMap({
       <MapContainer center={defaultCenter} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false}>
         <ZoomControl position="bottomright" />
         <RecenterAutomatically center={defaultCenter} />
+        {/*
+          Tuiles OpenStreetMap : gratuites, sans clé API, et couvertes par une licence
+          d'usage claire (contrairement aux tuiles Google chargées directement sans clé,
+          qui violent les CGU de Google Maps et peuvent être coupées sans préavis).
+        */}
         <TileLayer
-          url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-          subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
-          attribution='&copy; Google Maps'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          subdomains={['a', 'b', 'c']}
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
 
         {/* Marqueur de position de l'utilisateur */}

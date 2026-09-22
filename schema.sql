@@ -232,3 +232,12 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token_hash);
+
+-- ============================================================
+-- MIGRATION : rate limiting sur les routes sensibles (auth)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key          VARCHAR(255) PRIMARY KEY,
+  count        INTEGER NOT NULL DEFAULT 1,
+  window_start TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

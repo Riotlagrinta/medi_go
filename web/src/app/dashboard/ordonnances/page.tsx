@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Camera, CheckCircle2, XCircle, Clock, Eye, AlertCircle, RefreshCw, Send, Check } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -75,7 +76,7 @@ export default function OrdonnancesPage() {
                 className="h-48 bg-slate-100 relative cursor-pointer overflow-hidden"
                 onClick={() => setSelectedImage(p.image_url)}
               >
-                <img src={p.image_url} alt="Ordonnance" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <Image src={p.image_url} alt="Ordonnance" fill sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw" className="object-cover group-hover:scale-105 transition-transform duration-500" />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                   <Eye className="text-white opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 drop-shadow-lg" />
                 </div>
