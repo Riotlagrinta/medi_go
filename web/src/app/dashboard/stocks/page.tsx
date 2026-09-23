@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Trash2, ArrowLeft, Package, Minus, Check } from 'lucide-react';
+import { Search, Plus, Trash2, ArrowLeft, Package, Minus, Check, Upload, Sparkles, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 
@@ -17,6 +17,14 @@ interface Medication {
   id: number;
   name: string;
   category: string;
+}
+
+interface ImportEntry {
+  name: string;
+  price: number;
+  quantity: number;
+  medication_id: number | null;
+  raw: string;
 }
 
 export default function Stocks() {
@@ -38,6 +46,15 @@ export default function Stocks() {
   const [editingStockId, setEditingStockId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
   const [pendingStockId, setPendingStockId] = useState<number | null>(null);
+
+  // Import en masse (CSV/Excel collé)
+  const [showImportPanel, setShowImportPanel] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importPreview, setImportPreview] = useState<ImportEntry[] | null>(null);
+  const [importUnmatched, setImportUnmatched] = useState<string[]>([]);
+  const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState<{ updated: number; medicationsCreated: number } | null>(null);
 
   const fetchStocks = async (id: number, query = '') => {
     try {
@@ -177,6 +194,55 @@ export default function Stocks() {
     }
   };
 
+  const analyzeImport = async () => {
+    if (!importText.trim()) return;
+    setImportLoading(true);
+    setImportResult(null);
+    try {
+      const res = await api.post('/stocks/import/preview', { text: importText });
+      if (res.ok) {
+        const data = await res.json();
+        const entries = data.entries as ImportEntry[];
+        setImportPreview(entries);
+        setImportUnmatched(data.unmatched || []);
+        setImportSelected(new Set(entries.map((_, i) => i)));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const toggleImportEntry = (index: number) => {
+    setImportSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index); else next.add(index);
+      return next;
+    });
+  };
+
+  const applyImport = async () => {
+    if (!importPreview || !pharmacyId) return;
+    setImportLoading(true);
+    try {
+      const entries = importPreview.filter((_, i) => importSelected.has(i));
+      const res = await api.post('/stocks/import/apply', { pharmacy_id: pharmacyId, entries });
+      if (res.ok) {
+        const data = await res.json();
+        setImportResult(data);
+        setImportPreview(null);
+        setImportUnmatched([]);
+        setImportText('');
+        fetchStocks(pharmacyId, searchQuery);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
   if (!authorized) return null;
 
   const filteredStocks = stocks;
@@ -194,13 +260,22 @@ export default function Stocks() {
               <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">{pharmacyName}</p>
             </div>
           </div>
-          <button 
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="bg-emerald-600 text-white p-3 md:px-6 md:py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg shadow-emerald-100 active:scale-95 transition-all"
-          >
-            <Plus className={`w-6 h-6 transition-transform ${showAddForm ? 'rotate-45' : ''}`} /> 
-            <span className="hidden md:inline">Ajouter</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setShowImportPanel(!showImportPanel); setShowAddForm(false); }}
+              className="bg-slate-900 text-white p-3 md:px-5 md:py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg active:scale-95 transition-all"
+            >
+              <Upload className="w-5 h-5" />
+              <span className="hidden md:inline">Importer</span>
+            </button>
+            <button
+              onClick={() => { setShowAddForm(!showAddForm); setShowImportPanel(false); }}
+              className="bg-emerald-600 text-white p-3 md:px-6 md:py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg shadow-emerald-100 active:scale-95 transition-all"
+            >
+              <Plus className={`w-6 h-6 transition-transform ${showAddForm ? 'rotate-45' : ''}`} />
+              <span className="hidden md:inline">Ajouter</span>
+            </button>
+          </div>
         </div>
 
         <div className="max-w-6xl mx-auto relative">
@@ -258,6 +333,108 @@ export default function Stocks() {
               <input name="quantity" type="number" required placeholder="Quantité" className="w-full bg-slate-50 border-none rounded-xl py-4 px-4 font-bold" />
               <button type="submit" disabled={!selectedMed} className="bg-slate-900 text-white py-4 rounded-xl font-black hover:bg-slate-800 transition-all disabled:opacity-40 disabled:cursor-not-allowed">Enregistrer</button>
             </form>
+          </div>
+        )}
+
+        {showImportPanel && (
+          <div className="bg-white p-6 md:p-8 rounded-[32px] shadow-xl border border-slate-100 mb-8 animate-in fade-in slide-in-from-top-4 duration-300 space-y-5">
+            <div className="bg-amber-50 border border-amber-100 text-amber-800 text-sm font-medium p-4 rounded-2xl flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <p>
+                Colle une ligne par médicament au format <span className="font-mono font-bold">nom ; prix ; quantité</span>{' '}
+                (export Excel/Google Sheets, virgule ou point-virgule accepté). Un médicament inconnu de MediGo sera créé
+                automatiquement. Vérifie toujours l&apos;aperçu avant de confirmer.
+              </p>
+            </div>
+
+            {!importPreview ? (
+              <div className="space-y-4">
+                <textarea
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  rows={8}
+                  placeholder={'Doliprane 1000mg;1500;42\nAmoxicilline 500mg;2500;15\nParacétamol Sirop;1200;8'}
+                  className="w-full bg-slate-50 border-none rounded-2xl p-5 font-mono text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
+                <button
+                  onClick={analyzeImport}
+                  disabled={importLoading || !importText.trim()}
+                  className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-sm hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" /> {importLoading ? 'Analyse...' : 'Analyser'}
+                </button>
+
+                {importResult && (
+                  <div className="bg-emerald-50 text-emerald-700 p-5 rounded-2xl text-sm font-bold">
+                    ✅ {importResult.updated} ligne(s) de stock mise(s) à jour
+                    {importResult.medicationsCreated > 0 && `, ${importResult.medicationsCreated} nouveau(x) médicament(s) créé(s)`}.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <p className="text-sm font-bold text-slate-600">
+                    {importSelected.size} / {importPreview.length} ligne(s) sélectionnée(s)
+                    {importUnmatched.length > 0 && (
+                      <span className="text-amber-600"> · {importUnmatched.length} ligne(s) non reconnue(s)</span>
+                    )}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setImportPreview(null); setImportUnmatched([]); }}
+                      className="px-4 py-2 rounded-xl text-xs font-black text-slate-500 hover:bg-slate-100 transition-all"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={applyImport}
+                      disabled={importLoading || importSelected.size === 0}
+                      className="px-5 py-2 rounded-xl text-xs font-black bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-all flex items-center gap-2"
+                    >
+                      <Check className="w-4 h-4" /> {importLoading ? 'Application...' : `Confirmer (${importSelected.size})`}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="max-h-[420px] overflow-y-auto border border-slate-100 rounded-2xl divide-y divide-slate-100">
+                  {importPreview.map((entry, i) => (
+                    <label
+                      key={i}
+                      className={`flex items-center gap-3 p-4 cursor-pointer transition-colors ${importSelected.has(i) ? 'bg-white' : 'bg-slate-50 opacity-60'}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={importSelected.has(i)}
+                        onChange={() => toggleImportEntry(i)}
+                        className="w-4 h-4 accent-emerald-600 flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                        <span className="font-black text-slate-900 text-sm">{entry.name}</span>
+                        {entry.medication_id ? (
+                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Existant</span>
+                        ) : (
+                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Nouveau</span>
+                        )}
+                      </div>
+                      <span className="text-xs font-bold text-slate-500 flex-shrink-0">{entry.price.toLocaleString()} F</span>
+                      <span className="text-xs font-black text-emerald-600 flex-shrink-0 w-16 text-right">{entry.quantity} u.</span>
+                    </label>
+                  ))}
+                </div>
+
+                {importUnmatched.length > 0 && (
+                  <details className="bg-slate-50 rounded-2xl p-4">
+                    <summary className="text-xs font-black text-slate-500 uppercase cursor-pointer">
+                      {importUnmatched.length} ligne(s) non reconnue(s) — à corriger et recoller si besoin
+                    </summary>
+                    <ul className="mt-3 space-y-1 text-xs text-slate-500 font-mono">
+                      {importUnmatched.map((u, i) => <li key={i}>{u}</li>)}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            )}
           </div>
         )}
 
