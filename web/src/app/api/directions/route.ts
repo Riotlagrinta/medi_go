@@ -5,11 +5,21 @@ import { checkRateLimit, getClientIp, rateLimited } from '@/lib/rateLimit';
 // largement suffisant pour notre volume). L'appel se fait côté serveur pour
 // ne jamais exposer la clé au navigateur, et pour pouvoir le limiter/logguer.
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.ORS_API_KEY;
+  // .trim() : un copier-coller dans le dashboard Vercel ajoute parfois un
+  // espace ou un retour à la ligne invisible en fin de valeur, ce qui rend le
+  // header HTTP invalide et fait planter `fetch` de façon peu explicite.
+  const apiKey = process.env.ORS_API_KEY?.trim();
   if (!apiKey) {
     return Response.json(
       { error: "Le calcul d'itinéraire n'est pas encore configuré (clé API manquante)." },
       { status: 503 }
+    );
+  }
+  if (/[\r\n\t]/.test(apiKey)) {
+    console.error('ORS_API_KEY contient un caractère invalide (retour à la ligne/tabulation) — vérifie la valeur dans Vercel.');
+    return Response.json(
+      { error: 'Configuration de la clé API invalide (caractère invisible détecté).' },
+      { status: 500 }
     );
   }
 
