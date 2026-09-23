@@ -16,11 +16,18 @@ export interface ParsedDutyPharmacy {
 // Coordonnées approximatives (centre-ville) utilisées uniquement en secours quand une
 // pharmacie nouvellement importée n'a pas de géolocalisation précise disponible.
 export const CITY_FALLBACK_COORDS: Record<string, { lat: number; lng: number }> = {
-  'Lomé':    { lat: 6.1372,  lng: 1.2255 },
-  'Dapaong': { lat: 10.8620, lng: 0.2060 },
-  'Kara':    { lat: 9.5511,  lng: 1.1861 },
-  'Kpalimé': { lat: 6.9000,  lng: 0.6333 },
-  'Sokodé':  { lat: 8.9833,  lng: 1.1333 },
+  'Lomé':     { lat: 6.1372,  lng: 1.2255 },
+  'Dapaong':  { lat: 10.8620, lng: 0.2060 },
+  'Kara':     { lat: 9.5511,  lng: 1.1861 },
+  'Kpalimé':  { lat: 6.9000,  lng: 0.6333 },
+  'Sokodé':   { lat: 8.9833,  lng: 1.1333 },
+  'Atakpamé': { lat: 7.5333,  lng: 1.1333 },
+  'Tsévié':   { lat: 6.4167,  lng: 1.2167 },
+  'Aného':    { lat: 6.2333,  lng: 1.6000 },
+  'Bassar':   { lat: 9.2500,  lng: 0.7833 },
+  'Notsé':    { lat: 6.9333,  lng: 1.1500 },
+  'Vogan':    { lat: 6.3333,  lng: 1.5333 },
+  'Mango':    { lat: 10.3667, lng: 0.4667 },
 };
 
 const CITY_HEADER_ALIASES: Record<string, string> = {
@@ -32,6 +39,17 @@ const CITY_HEADER_ALIASES: Record<string, string> = {
   "SOKODÉ": 'Sokodé',
   LOME: 'Lomé',
   "LOMÉ": 'Lomé',
+  ATAKPAME: 'Atakpamé',
+  "ATAKPAMÉ": 'Atakpamé',
+  TSEVIE: 'Tsévié',
+  "TSÉVIÉ": 'Tsévié',
+  ANEHO: 'Aného',
+  "ANÉHO": 'Aného',
+  BASSAR: 'Bassar',
+  NOTSE: 'Notsé',
+  "NOTSÉ": 'Notsé',
+  VOGAN: 'Vogan',
+  MANGO: 'Mango',
 };
 
 function normalizeForCompare(s: string) {
