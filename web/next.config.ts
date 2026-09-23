@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 import fs from 'node:fs';
+import { withSentryConfig } from '@sentry/nextjs/config';
 
 // Polyfill pour corriger l'incompatibilité de Node 24 sur Windows avec Webpack (EISDIR au lieu de EINVAL sur readlink)
 const origReadlink = fs.readlink;
@@ -55,4 +56,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// withSentryConfig est sûr à appliquer même sans compte Sentry : sans SENTRY_AUTH_TOKEN
+// il saute juste l'upload des sourcemaps (avertissement en build, rien de bloquant).
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: true,
+  webpack: { treeshake: { removeDebugLogging: true } },
+});

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Suspense } from "react";
 import NavigationProgressBar from "@/components/NavigationProgressBar";
+import SentryInit from "@/components/SentryInit";
 import { Analytics } from '@vercel/analytics/next';
 
 const siteUrl = "https://medi-go-murex.vercel.app";
@@ -54,6 +55,7 @@ export default function RootLayout({
         </Suspense>
         {children}
         <Analytics />
+        <SentryInit />
       </body>
     </html>
   );
