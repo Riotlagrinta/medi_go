@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, Trash2, ArrowLeft, Package } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Plus, Trash2, ArrowLeft, Package, Minus, Check } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 
@@ -27,6 +27,17 @@ export default function Stocks() {
   const [pharmacyName, setPharmacyName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [authorized, setAuthorized] = useState(false);
+
+  // Sélecteur de médicament avec recherche (remplace le <select> à ~290 options)
+  const [medQuery, setMedQuery] = useState('');
+  const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
+  const [showMedSuggestions, setShowMedSuggestions] = useState(false);
+  const medBoxRef = useRef<HTMLDivElement>(null);
+
+  // Édition rapide de la quantité directement sur la carte (sans rouvrir le formulaire)
+  const [editingStockId, setEditingStockId] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [pendingStockId, setPendingStockId] = useState<number | null>(null);
 
   const fetchStocks = async (id: number, query = '') => {
     try {
@@ -83,6 +94,23 @@ export default function Stocks() {
     return () => clearTimeout(delayDebounce);
   }, [searchQuery, authorized, pharmacyId]);
 
+  // Ferme la liste de suggestions quand on clique en dehors du champ
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (medBoxRef.current && !medBoxRef.current.contains(e.target as Node)) {
+        setShowMedSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredMedSuggestions = medQuery.trim().length > 0
+    ? allMedications
+        .filter((m) => m.name.toLowerCase().includes(medQuery.trim().toLowerCase()))
+        .slice(0, 8)
+    : [];
+
   const deleteStock = async (stockId: number) => {
     if (!confirm("Supprimer ce médicament ?")) return;
     try {
@@ -93,19 +121,60 @@ export default function Stocks() {
 
   const addMedicationToStock = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedMed) return;
     const formData = new FormData(e.target as HTMLFormElement);
     try {
-      const response = await api.post('/stocks', { 
-        pharmacy_id: pharmacyId, 
-        medication_id: parseInt(formData.get('medication_id') as string), 
+      const response = await api.post('/stocks', {
+        pharmacy_id: pharmacyId,
+        medication_id: selectedMed.id,
         quantity: parseInt(formData.get('quantity') as string),
         price: parseFloat(formData.get('price') as string)
       });
       if (response.ok) {
         setShowAddForm(false);
+        setSelectedMed(null);
+        setMedQuery('');
         if (pharmacyId) fetchStocks(pharmacyId, searchQuery);
       }
     } catch (error) { console.error(error); }
+  };
+
+  // Ajustement rapide ±1 (vente au comptoir, correction ponctuelle) : mise à jour
+  // optimiste de l'affichage, appel API en arrière-plan.
+  const nudgeQuantity = async (stockId: number, delta: number) => {
+    setStocks((prev) => prev.map((s) => (s.stock_id === stockId ? { ...s, quantity: Math.max(0, s.quantity + delta) } : s)));
+    setPendingStockId(stockId);
+    try {
+      await api.patch(`/stocks/${stockId}`, { delta });
+    } catch (error) {
+      console.error(error);
+      if (pharmacyId) fetchStocks(pharmacyId, searchQuery); // resynchronise en cas d'échec
+    } finally {
+      setPendingStockId(null);
+    }
+  };
+
+  const startEditingQuantity = (item: StockItem) => {
+    setEditingStockId(item.stock_id);
+    setEditValue(String(item.quantity));
+  };
+
+  // Édition en ligne : on retape le nouveau total (ex: après un réassort), plus
+  // rapide que de rouvrir tout le formulaire pour un produit déjà en stock.
+  const confirmEditQuantity = async (stockId: number) => {
+    const newQuantity = parseInt(editValue, 10);
+    setEditingStockId(null);
+    if (Number.isNaN(newQuantity)) return;
+    setStocks((prev) => prev.map((s) => (s.stock_id === stockId ? { ...s, quantity: Math.max(0, newQuantity) } : s)));
+    setPendingStockId(stockId);
+    try {
+      await api.patch(`/stocks/${stockId}`, { quantity: newQuantity });
+    } catch (error) {
+      console.error(error);
+      if (pharmacyId) fetchStocks(pharmacyId, searchQuery);
+    } finally {
+      setPendingStockId(null);
+    }
   };
 
   if (!authorized) return null;
@@ -150,18 +219,44 @@ export default function Stocks() {
         {showAddForm && (
           <div className="bg-white p-6 md:p-8 rounded-[32px] shadow-xl border border-slate-100 mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
             <form onSubmit={addMedicationToStock} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-3">
+              <div className="md:col-span-3 relative" ref={medBoxRef}>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Médicament</label>
-                <select name="medication_id" required className="w-full bg-slate-50 border-none rounded-xl py-4 px-4 focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-700">
-                  <option value="">Sélectionnez un médicament</option>
-                  {allMedications.map(med => (
-                    <option key={med.id} value={med.id}>{med.name} ({med.category})</option>
-                  ))}
-                </select>
+                <input
+                  type="text"
+                  required
+                  placeholder="Tapez pour chercher un médicament..."
+                  value={selectedMed ? selectedMed.name : medQuery}
+                  onChange={(e) => {
+                    setSelectedMed(null);
+                    setMedQuery(e.target.value);
+                    setShowMedSuggestions(true);
+                  }}
+                  onFocus={() => setShowMedSuggestions(true)}
+                  className="w-full bg-slate-50 border-none rounded-xl py-4 px-4 focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-700"
+                />
+                {showMedSuggestions && filteredMedSuggestions.length > 0 && (
+                  <div className="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-100 max-h-64 overflow-y-auto">
+                    {filteredMedSuggestions.map((med) => (
+                      <button
+                        type="button"
+                        key={med.id}
+                        onClick={() => {
+                          setSelectedMed(med);
+                          setMedQuery('');
+                          setShowMedSuggestions(false);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-emerald-50 transition-colors flex items-center justify-between gap-2"
+                      >
+                        <span className="font-bold text-slate-700 text-sm">{med.name}</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex-shrink-0">{med.category}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <input name="price" type="number" required placeholder="Prix" className="w-full bg-slate-50 border-none rounded-xl py-4 px-4 font-bold" />
               <input name="quantity" type="number" required placeholder="Quantité" className="w-full bg-slate-50 border-none rounded-xl py-4 px-4 font-bold" />
-              <button type="submit" className="bg-slate-900 text-white py-4 rounded-xl font-black hover:bg-slate-800 transition-all">Enregistrer</button>
+              <button type="submit" disabled={!selectedMed} className="bg-slate-900 text-white py-4 rounded-xl font-black hover:bg-slate-800 transition-all disabled:opacity-40 disabled:cursor-not-allowed">Enregistrer</button>
             </form>
           </div>
         )}
@@ -187,8 +282,50 @@ export default function Stocks() {
                 <button onClick={() => deleteStock(item.stock_id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
               </div>
               <div className="flex items-center justify-between pt-4 border-t border-slate-50 mt-2">
-                <p className="text-xl font-black text-slate-900">{parseFloat(item.price).toLocaleString()} F</p>
-                <span className={`text-sm font-black px-2 py-1 rounded-lg ${item.quantity < 10 ? 'bg-red-100 text-red-700 animate-bounce' : item.quantity < 20 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>{item.quantity} units</span>
+                <p className="text-lg font-black text-slate-900">{parseFloat(item.price).toLocaleString()} F</p>
+
+                {editingStockId === item.stock_id ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      autoFocus
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') confirmEditQuantity(item.stock_id); if (e.key === 'Escape') setEditingStockId(null); }}
+                      onBlur={() => confirmEditQuantity(item.stock_id)}
+                      className="w-16 text-center bg-slate-50 rounded-lg py-1 px-1 font-black text-sm outline-none ring-2 ring-emerald-500"
+                    />
+                    <button onMouseDown={(e) => e.preventDefault()} onClick={() => confirmEditQuantity(item.stock_id)} className="p-1.5 bg-emerald-600 text-white rounded-lg active:scale-90 transition-all">
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => nudgeQuantity(item.stock_id, -1)}
+                      disabled={item.quantity === 0 || pendingStockId === item.stock_id}
+                      title="Retirer 1 unité"
+                      className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg active:scale-90 transition-all disabled:opacity-30"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => startEditingQuantity(item)}
+                      title="Cliquer pour saisir la quantité exacte"
+                      className={`text-sm font-black px-2 py-1 rounded-lg min-w-[64px] transition-all ${item.quantity < 10 ? 'bg-red-100 text-red-700' : item.quantity < 20 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}
+                    >
+                      {item.quantity} units
+                    </button>
+                    <button
+                      onClick={() => nudgeQuantity(item.stock_id, 1)}
+                      disabled={pendingStockId === item.stock_id}
+                      title="Ajouter 1 unité"
+                      className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg active:scale-90 transition-all disabled:opacity-30"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
