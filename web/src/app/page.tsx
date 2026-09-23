@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Clock, Calendar, Pill, Phone, Loader2, MessageCircle, X, Send, Camera, ShieldCheck, Heart, User, LogOut, Info, Navigation, Smartphone, Download } from 'lucide-react';
+import { Search, MapPin, Clock, Calendar, Pill, Phone, Loader2, MessageCircle, X, Send, Camera, ShieldCheck, Heart, User, LogOut, Info, Navigation, Smartphone, Download, Route } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -209,6 +209,8 @@ export default function Home() {
   const [chatMessage, setChatMessage] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [route, setRoute] = useState<{ geometry: GeoJSON.LineString; distanceMeters: number | null; durationSeconds: number | null } | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -329,6 +331,41 @@ export default function Home() {
   useEffect(() => {
     getUserLocation();
   }, []);
+
+  // Calcule et affiche l'itinéraire routier vers la pharmacie la plus proche
+  // (les listes sont déjà triées par distance croissante côté API).
+  const handleNearestRoute = async () => {
+    const list = results.length > 0 ? results : nearbyPharmacies;
+    if (!userCoords) {
+      setNotification({ message: 'Localisation en cours, réessayez dans un instant.', type: 'error' });
+      return;
+    }
+    const nearest = list[0] as any;
+    if (!nearest?.lat || !nearest?.lng) {
+      setNotification({ message: 'Aucune pharmacie à proximité pour le moment.', type: 'error' });
+      return;
+    }
+    setViewMode('map');
+    setRouteLoading(true);
+    try {
+      const response = await api.post('/directions', {
+        startLat: userCoords.lat,
+        startLng: userCoords.lng,
+        endLat: parseFloat(nearest.lat),
+        endLng: parseFloat(nearest.lng),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setNotification({ message: data.error || "Impossible de calculer l'itinéraire.", type: 'error' });
+        return;
+      }
+      setRoute({ geometry: data.geometry, distanceMeters: data.distanceMeters, durationSeconds: data.durationSeconds });
+    } catch {
+      setNotification({ message: "Impossible de calculer l'itinéraire.", type: 'error' });
+    } finally {
+      setRouteLoading(false);
+    }
+  };
 
   // Gère la disparition automatique des notifications
   useEffect(() => {
@@ -609,7 +646,10 @@ export default function Home() {
       {/* BOUTON FLOTTANT DE VUE (LISTE/CARTE) */}
       <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-28 opacity-0'}`}>
         <button
-          onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+          onClick={() => {
+            if (viewMode === 'map') setRoute(null);
+            setViewMode(viewMode === 'list' ? 'map' : 'list');
+          }}
           className="bg-slate-900/90 text-white px-8 py-4 rounded-full font-black shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-3 active:scale-90 transition-all border border-white/10 backdrop-blur-2xl"
         >
           {viewMode === 'list' ? (
@@ -635,10 +675,43 @@ export default function Home() {
               lng: parseFloat(p.lng) || 1.2255,
               distance: typeof p.distance === 'number' ? p.distance : undefined,
             }))}
+            route={route?.geometry ?? null}
           />
-          <div className="absolute top-4 left-4 right-4 bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-slate-100 flex items-center justify-between pointer-events-none">
-            <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Pharmacies autour de vous</p>
-            <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-lg">{(results.length > 0 ? results : nearbyPharmacies).length} RÉSULTATS</span>
+          <div className="absolute top-4 left-4 right-4 z-10 flex flex-col gap-2">
+            <div className="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-slate-100 flex items-center justify-between pointer-events-none">
+              <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Pharmacies autour de vous</p>
+              <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-lg">{(results.length > 0 ? results : nearbyPharmacies).length} RÉSULTATS</span>
+            </div>
+
+            {route ? (
+              <div className="self-start bg-blue-600 text-white pl-4 pr-2 py-2.5 rounded-2xl shadow-lg flex items-center gap-3">
+                <Route className="w-4 h-4 flex-shrink-0" />
+                <span className="text-xs font-black">
+                  {route.distanceMeters != null
+                    ? route.distanceMeters < 1000
+                      ? `${Math.round(route.distanceMeters)} m`
+                      : `${(route.distanceMeters / 1000).toFixed(1)} km`
+                    : '—'}
+                  {route.durationSeconds != null && ` · ${Math.max(1, Math.round(route.durationSeconds / 60))} min`}
+                </span>
+                <button
+                  onClick={() => setRoute(null)}
+                  className="p-1 hover:bg-white/20 rounded-lg active:scale-90 transition-all"
+                  title="Fermer l'itinéraire"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleNearestRoute}
+                disabled={routeLoading}
+                className="self-start bg-slate-900/90 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-lg flex items-center gap-2 text-xs font-black active:scale-95 transition-all disabled:opacity-60"
+              >
+                {routeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Route className="w-4 h-4 text-blue-400" />}
+                Itinéraire vers la plus proche
+              </button>
+            )}
           </div>
         </section>
       ) : (

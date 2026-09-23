@@ -54,6 +54,7 @@ Variables d'environnement nécessaires (fichier `web/.env.local`, non versionné
 | `BLOB_READ_WRITE_TOKEN` | Token du Blob store Vercel (upload photos d'ordonnances) | Oui pour l'upload d'ordonnances |
 | `RESEND_API_KEY` | Clé API [Resend](https://resend.com), pour l'email « mot de passe oublié » | Oui pour la réinitialisation de mot de passe |
 | `RESEND_FROM_EMAIL` | Adresse d'expédition (ex: `MediGo <no-reply@medigo.tg>`), nécessite un domaine vérifié dans Resend | Optionnel — sans domaine vérifié, les emails ne partent que vers l'adresse du compte Resend |
+| `ORS_API_KEY` | Clé API [OpenRouteService](https://openrouteservice.org/dev/#/signup) (compte gratuit), pour calculer l'itinéraire vers la pharmacie la plus proche | Oui pour le bouton « Itinéraire » — sans clé, l'API répond simplement 503 et le bouton affiche un message d'erreur |
 
 ### Application mobile (`mobile/`)
 

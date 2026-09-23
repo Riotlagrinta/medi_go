@@ -69,9 +69,11 @@ function popupHtml(p: Pharmacy): string {
 export default function PharmacyMap({
   pharmacies,
   userLocation,
+  route,
 }: {
   pharmacies: Pharmacy[];
   userLocation?: { lat: number; lng: number } | null;
+  route?: GeoJSON.LineString | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -108,6 +110,27 @@ export default function PharmacyMap({
     mapRef.current = map;
 
     map.on('load', () => {
+      // Source du tracé d'itinéraire, ajoutée en premier pour rester sous les
+      // marqueurs de pharmacies (qui doivent rester cliquables par-dessus).
+      map.addSource('route', {
+        type: 'geojson',
+        data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } },
+      });
+      map.addLayer({
+        id: 'route-line-casing',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#1e3a8a', 'line-width': 7, 'line-opacity': 0.4 },
+      });
+      map.addLayer({
+        id: 'route-line',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#2563eb', 'line-width': 4 },
+      });
+
       map.addSource('pharmacies-regular', {
         type: 'geojson',
         data: toGeoJSON([]),
@@ -215,6 +238,34 @@ export default function PharmacyMap({
     if (map.isStyleLoaded()) apply();
     else map.once('load', apply);
   }, [pharmacies]);
+
+  // Dessine (ou efface) le tracé d'itinéraire, et cadre la vue dessus quand il apparaît.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      const source = map.getSource('route') as GeoJSONSource | undefined;
+      if (!source) return;
+      source.setData({
+        type: 'Feature',
+        properties: {},
+        geometry: route ?? { type: 'LineString', coordinates: [] },
+      });
+      if (route && route.coordinates.length > 0) {
+        const lngs = route.coordinates.map((c) => c[0]);
+        const lats = route.coordinates.map((c) => c[1]);
+        map.fitBounds(
+          [
+            [Math.min(...lngs), Math.min(...lats)],
+            [Math.max(...lngs), Math.max(...lats)],
+          ],
+          { padding: 60, duration: 800 }
+        );
+      }
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once('load', apply);
+  }, [route]);
 
   // Marqueur + recentrage sur la position de l'utilisateur
   useEffect(() => {
