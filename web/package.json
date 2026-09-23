@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node ./scripts/copy-maplibre-worker.js",
     "dev": "node -r ./patch-fs.js ./node_modules/next/dist/bin/next dev",
+    "prebuild": "node ./scripts/copy-maplibre-worker.js",
     "build": "node -r ./patch-fs.js ./node_modules/next/dist/bin/next build",
     "start": "node -r ./patch-fs.js ./node_modules/next/dist/bin/next start",
     "lint": "next lint"

@@ -9,6 +9,7 @@ import {
   AttributionControl,
   addProtocol,
   removeProtocol,
+  setWorkerUrl,
   type GeoJSONSource,
   type MapLayerMouseEvent,
 } from 'maplibre-gl';
@@ -87,6 +88,13 @@ export default function PharmacyMap({
 
     const protocol = new Protocol();
     addProtocol('pmtiles', protocol.tile);
+
+    // MapLibre calcule l'URL de son web worker via `import.meta.url`, ce qui ne
+    // fonctionne plus une fois la lib regroupée par le bundler de Next.js (le
+    // chemin calculé ne correspond à aucun fichier réel). On sert donc nous-mêmes
+    // une copie du worker (voir scripts/copy-maplibre-worker.js) et on l'indique
+    // explicitement, comme recommandé par MapLibre pour les setups avec bundler.
+    setWorkerUrl(`${window.location.origin}/maps/maplibre-gl-worker.mjs`);
 
     const map = new MapLibreMap({
       container: containerRef.current,
