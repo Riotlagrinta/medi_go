@@ -1,32 +1,21 @@
 'use client';
 
-import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, ZoomControl, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import { MapPin, Phone, Clock, ShieldCheck, Navigation } from 'lucide-react';
-
-// Fix for default marker icons in Next.js
-const DefaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
-
-const OnDutyIcon = L.icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
-
-const UserIcon = L.divIcon({
-  className: 'user-location-marker',
-  html: `<div style="background-color: #2563eb; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #ffffff; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.35); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>`,
-  iconSize: [20, 20],
-  iconAnchor: [10, 10],
-});
+import { useEffect, useRef } from 'react';
+import {
+  Map as MapLibreMap,
+  Marker,
+  Popup,
+  NavigationControl,
+  AttributionControl,
+  addProtocol,
+  removeProtocol,
+  type GeoJSONSource,
+  type MapLayerMouseEvent,
+} from 'maplibre-gl';
+import { Protocol } from 'pmtiles';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { MapPin } from 'lucide-react';
+import { buildMapStyle } from '@/lib/mapStyle';
 
 interface Pharmacy {
   id: number;
@@ -40,101 +29,222 @@ interface Pharmacy {
   distance?: number;
 }
 
-function RecenterAutomatically({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center, map.getZoom());
-  }, [center, map]);
-  return null;
+function toGeoJSON(pharmacies: Pharmacy[]): GeoJSON.FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: pharmacies.map((p) => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+      properties: { ...p },
+    })),
+  };
 }
 
-export default function PharmacyMap({ 
-  pharmacies, 
-  userLocation 
-}: { 
-  pharmacies: Pharmacy[]; 
+function popupHtml(p: Pharmacy): string {
+  const distance =
+    typeof p.distance === 'number'
+      ? `<p style="font-size:10px;font-weight:900;color:#047857;margin:0 0 8px">📍 À ${
+          p.distance < 1000 ? `${p.distance} m` : `${(p.distance / 1000).toFixed(1)} km`
+        }</p>`
+      : '';
+  const call = p.phone
+    ? `<a href="tel:${p.phone}" style="display:flex;align-items:center;justify-content:center;gap:6px;background:#059669;color:#fff;font-size:10px;font-weight:700;padding:6px 12px;border-radius:8px;text-decoration:none;margin-bottom:4px">📞 Appeler</a>`
+    : '';
+  const duty = p.is_on_duty
+    ? `<span style="display:flex;align-items:center;justify-content:center;gap:4px;background:#fee2e2;color:#dc2626;font-size:9px;font-weight:900;padding:4px 8px;border-radius:8px">⏰ DE GARDE</span>`
+    : '';
+  const verified = p.is_verified ? ' ✔️' : '';
+
+  return `
+    <div style="padding:8px;min-width:170px;font-family:system-ui,sans-serif">
+      <h3 style="font-weight:900;color:#1e293b;font-size:13px;margin:0 0 4px">${p.name}${verified}</h3>
+      <p style="font-size:10px;color:#64748b;margin:0 0 4px">📍 ${p.address}</p>
+      ${distance}
+      <div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">${call}${duty}</div>
+    </div>
+  `;
+}
+
+export default function PharmacyMap({
+  pharmacies,
+  userLocation,
+}: {
+  pharmacies: Pharmacy[];
   userLocation?: { lat: number; lng: number } | null;
 }) {
-  const defaultCenter: [number, number] = userLocation 
-    ? [userLocation.lat, userLocation.lng] 
-    : [6.1372, 1.2255]; // Lomé centre
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const userMarkerRef = useRef<Marker | null>(null);
+  const popupRef = useRef<Popup | null>(null);
+
+  const defaultCenter: [number, number] = userLocation
+    ? [userLocation.lng, userLocation.lat]
+    : [1.2255, 6.1372]; // Lomé centre
+
+  // Initialisation de la carte (une seule fois)
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+
+    const protocol = new Protocol();
+    addProtocol('pmtiles', protocol.tile);
+
+    const map = new MapLibreMap({
+      container: containerRef.current,
+      style: buildMapStyle(`${window.location.origin}/maps/togo.pmtiles`),
+      center: defaultCenter,
+      zoom: 13,
+      attributionControl: false,
+    });
+    map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right');
+    map.addControl(new AttributionControl({ compact: true }), 'bottom-left');
+    mapRef.current = map;
+
+    map.on('load', () => {
+      map.addSource('pharmacies-regular', {
+        type: 'geojson',
+        data: toGeoJSON([]),
+        cluster: true,
+        clusterRadius: 50,
+        clusterMaxZoom: 14,
+      });
+      map.addSource('pharmacies-duty', { type: 'geojson', data: toGeoJSON([]) });
+
+      map.addLayer({
+        id: 'clusters',
+        type: 'circle',
+        source: 'pharmacies-regular',
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': '#059669',
+          'circle-opacity': 0.85,
+          'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 30, 26],
+        },
+      });
+      map.addLayer({
+        id: 'cluster-count',
+        type: 'symbol',
+        source: 'pharmacies-regular',
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-font': ['Noto Sans Bold'],
+          'text-size': 12,
+        },
+        paint: { 'text-color': '#ffffff' },
+      });
+      map.addLayer({
+        id: 'unclustered-point',
+        type: 'circle',
+        source: 'pharmacies-regular',
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-color': '#059669',
+          'circle-radius': 7,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+        },
+      });
+      map.addLayer({
+        id: 'duty-point',
+        type: 'circle',
+        source: 'pharmacies-duty',
+        paint: {
+          'circle-color': '#dc2626',
+          'circle-radius': 8,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+        },
+      });
+
+      // Clic sur un cluster : zoome pour l'éclater
+      map.on('click', 'clusters', (e: MapLayerMouseEvent) => {
+        const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+        const clusterId = features[0]?.properties?.cluster_id;
+        const source = map.getSource('pharmacies-regular') as GeoJSONSource;
+        if (clusterId == null) return;
+        source.getClusterExpansionZoom(clusterId).then((zoom) => {
+          const coords = (features[0].geometry as GeoJSON.Point).coordinates as [number, number];
+          map.easeTo({ center: coords, zoom });
+        });
+      });
+
+      // Clic sur une pharmacie individuelle : popup
+      const showPopup = (e: MapLayerMouseEvent) => {
+        const feature = e.features?.[0];
+        if (!feature) return;
+        const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
+        popupRef.current?.remove();
+        popupRef.current = new Popup({ closeButton: true })
+          .setLngLat(coords)
+          .setHTML(popupHtml(feature.properties as unknown as Pharmacy))
+          .addTo(map);
+      };
+      for (const layerId of ['unclustered-point', 'duty-point']) {
+        map.on('click', layerId, showPopup);
+        map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
+      }
+    });
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      removeProtocol('pmtiles');
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Met à jour les données pharmacies quand la liste change
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      const regular = pharmacies.filter((p) => !p.is_on_duty);
+      const duty = pharmacies.filter((p) => p.is_on_duty);
+      (map.getSource('pharmacies-regular') as GeoJSONSource | undefined)?.setData(toGeoJSON(regular));
+      (map.getSource('pharmacies-duty') as GeoJSONSource | undefined)?.setData(toGeoJSON(duty));
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once('load', apply);
+  }, [pharmacies]);
+
+  // Marqueur + recentrage sur la position de l'utilisateur
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const recenter = () => map.easeTo({ center: defaultCenter, zoom: map.getZoom() < 12 ? 13 : map.getZoom() });
+    if (map.isStyleLoaded()) recenter();
+    else map.once('load', recenter);
+
+    if (userLocation) {
+      let marker = userMarkerRef.current;
+      if (!marker) {
+        const el = document.createElement('div');
+        el.style.cssText =
+          'background:#2563eb;width:20px;height:20px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 4px rgba(37,99,235,0.35)';
+        marker = new Marker({ element: el }).setLngLat([userLocation.lng, userLocation.lat]);
+        userMarkerRef.current = marker;
+      } else {
+        marker.setLngLat([userLocation.lng, userLocation.lat]);
+      }
+      if (map.isStyleLoaded()) marker.addTo(map);
+      else map.once('load', () => marker?.addTo(map));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocation?.lat, userLocation?.lng]);
 
   return (
     <div className="h-full w-full relative group">
       {/* Overlay style Google Maps */}
-      <div className="absolute top-4 left-4 z-[1000] bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg border border-slate-100 flex items-center gap-2 pointer-events-none">
+      <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg border border-slate-100 flex items-center gap-2 pointer-events-none">
         <div className="bg-emerald-600 p-1.5 rounded-lg"><MapPin className="text-white w-3 h-3" /></div>
         <span className="text-xs font-black text-slate-800 uppercase tracking-tighter">
-          {userLocation ? 'Autour de votre position' : 'Exploration Lomé'}
+          {userLocation ? 'Autour de votre position' : 'Exploration Togo'}
         </span>
       </div>
 
-      <MapContainer center={defaultCenter} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false}>
-        <ZoomControl position="bottomright" />
-        <RecenterAutomatically center={defaultCenter} />
-        {/*
-          Tuiles OpenStreetMap : gratuites, sans clé API, et couvertes par une licence
-          d'usage claire (contrairement aux tuiles Google chargées directement sans clé,
-          qui violent les CGU de Google Maps et peuvent être coupées sans préavis).
-        */}
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          subdomains={['a', 'b', 'c']}
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        />
-
-        {/* Marqueur de position de l'utilisateur */}
-        {userLocation && (
-          <Marker position={[userLocation.lat, userLocation.lng]} icon={UserIcon}>
-            <Popup>
-              <div className="p-2 text-center">
-                <div className="flex items-center justify-center gap-1 text-blue-600 font-black text-xs mb-1">
-                  <Navigation className="w-3.5 h-3.5" /> Votre position
-                </div>
-                <p className="text-[10px] text-slate-500">Précision GPS en temps réel</p>
-              </div>
-            </Popup>
-          </Marker>
-        )}
-
-        {/* Marqueurs des pharmacies */}
-        {pharmacies.map((p) => (
-          <Marker 
-            key={p.id} 
-            position={[p.lat, p.lng]} 
-            icon={p.is_on_duty ? OnDutyIcon : DefaultIcon}
-          >
-            <Popup>
-              <div className="p-2 min-w-[170px]">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-black text-slate-800 text-sm">{p.name}</h3>
-                  {p.is_verified && <ShieldCheck className="w-3.5 h-3.5 text-blue-500 fill-blue-50" />}
-                </div>
-                <p className="text-[10px] text-slate-500 mb-1 flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-emerald-600" /> {p.address}
-                </p>
-                {typeof p.distance === 'number' && (
-                  <p className="text-[10px] font-black text-emerald-700 mb-2">
-                    📍 À {(p.distance < 1000 ? `${p.distance} m` : `${(p.distance / 1000).toFixed(1)} km`)}
-                  </p>
-                )}
-                <div className="flex flex-col gap-1 mt-1">
-                  {p.phone && (
-                    <a href={`tel:${p.phone}`} className="bg-emerald-600 text-white text-[10px] py-1.5 px-3 rounded-lg font-bold text-center flex items-center justify-center gap-2">
-                      <Phone className="w-3 h-3" /> Appeler
-                    </a>
-                  )}
-                  {p.is_on_duty && (
-                    <span className="bg-red-100 text-red-600 text-[9px] font-black py-1 px-2 rounded-lg text-center flex items-center justify-center gap-1">
-                      <Clock className="w-3 h-3" /> DE GARDE
-                    </span>
-                  )}
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+      <div ref={containerRef} className="h-full w-full" />
     </div>
   );
 }
