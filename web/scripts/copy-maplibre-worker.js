@@ -13,10 +13,15 @@
 const fs = require('fs');
 const path = require('path');
 
-const src = path.join(__dirname, '..', 'node_modules', 'maplibre-gl', 'dist', 'maplibre-gl-worker.mjs');
+// Le fichier worker importe lui-même un module compagnon (code partagé avec
+// le bundle principal) : les deux doivent être copiés ensemble, sinon le
+// worker charge bien mais échoue au premier `import` interne.
+const distDir = path.join(__dirname, '..', 'node_modules', 'maplibre-gl', 'dist');
 const destDir = path.join(__dirname, '..', 'public', 'maps');
-const dest = path.join(destDir, 'maplibre-gl-worker.mjs');
+const files = ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs'];
 
 fs.mkdirSync(destDir, { recursive: true });
-fs.copyFileSync(src, dest);
-console.log(`[copy-maplibre-worker] copié vers ${path.relative(process.cwd(), dest)}`);
+for (const file of files) {
+  fs.copyFileSync(path.join(distDir, file), path.join(destDir, file));
+  console.log(`[copy-maplibre-worker] copié vers ${path.relative(process.cwd(), path.join(destDir, file))}`);
+}
