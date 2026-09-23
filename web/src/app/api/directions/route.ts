@@ -20,12 +20,15 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Coordonnées invalides.' }, { status: 400 });
   }
 
-  // Anti-abus : protège notre quota gratuit OpenRouteService (2000 req/jour).
-  const ip = getClientIp(req);
-  const ok = await checkRateLimit(`directions:ip:${ip}`, 20, 60 * 60);
-  if (!ok) return rateLimited();
-
+  // Tout ce qui suit (accès DB pour le rate limit, puis appel réseau externe)
+  // est enveloppé pour ne jamais renvoyer un crash opaque : en cas de pépin on
+  // logue le détail (visible dans les logs Vercel) et on répond en JSON.
   try {
+    // Anti-abus : protège notre quota gratuit OpenRouteService (2000 req/jour).
+    const ip = getClientIp(req);
+    const ok = await checkRateLimit(`directions:ip:${ip}`, 20, 60 * 60);
+    if (!ok) return rateLimited();
+
     const res = await fetch('https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
       method: 'POST',
       headers: {
@@ -55,7 +58,10 @@ export async function POST(req: NextRequest) {
       durationSeconds: typeof summary.duration === 'number' ? summary.duration : null,
     });
   } catch (err) {
-    console.error('Erreur appel OpenRouteService:', err);
-    return Response.json({ error: "Impossible de calculer l'itinéraire pour le moment." }, { status: 502 });
+    console.error('Erreur /api/directions:', err instanceof Error ? err.stack : err);
+    return Response.json(
+      { error: "Impossible de calculer l'itinéraire pour le moment.", detail: err instanceof Error ? err.message : String(err) },
+      { status: 502 }
+    );
   }
 }
